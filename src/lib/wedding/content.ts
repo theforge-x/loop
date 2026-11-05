@@ -1,5 +1,6 @@
 import { z } from "zod";
 export const contentSchema = z.object({
+  contributions_enabled: z.boolean().optional(),
   hero_image_path: z.string().optional(), hero_caption: z.string().optional(),
   welcome_heading: z.string().optional(), welcome_text: z.string().optional(),
   story_intro: z.string().optional(), venue_name: z.string().optional(), venue_address: z.string().optional(),

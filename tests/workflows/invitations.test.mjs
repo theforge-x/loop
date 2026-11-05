@@ -18,7 +18,7 @@ describe('Phase 4 invitation, RSVP, CSV and delivery workflows', { timeout: 2400
   let f; let server; let logs = '';
   before(async () => {
     f = await createFixture('workflow');
-    server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', '3101'], { env: { ...process.env, RESEND_API_KEY: '', RESEND_FROM_EMAIL: '' }, stdio: ['ignore','pipe','pipe'] });
+    server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', '3101'], { env: { ...process.env, RESEND_API_KEY: '', RESEND_FROM_EMAIL: '', PAYSTACK_SECRET_KEY: '' }, stdio: ['ignore','pipe','pipe'] });
     server.stdout.on('data', chunk => { logs = (logs + chunk).slice(-16000); });
     server.stderr.on('data', chunk => { logs = (logs + chunk).slice(-16000); });
     let ready = false;
@@ -106,6 +106,58 @@ describe('Phase 4 invitation, RSVP, CSV and delivery workflows', { timeout: 2400
     let throttled=false;
     for(let attempt=0;attempt<12;attempt++){const result=await post(body);if(result.status===429){throttled=true;assert.equal(result.headers.get('retry-after'),'600');break;}}
     assert.ok(throttled,'The public RSVP endpoint must enforce its persisted per-token limit');
+  });
+
+  test('gift/category CRUD persists with role, publication and tenant safeguards',async()=>{
+    const category=must(await f.accounts.coordinator.client.from('wishlist_categories').insert({wedding_id:f.weddingA,title:'Workflow category',is_published:true}).select().single());
+    const item=must(await f.accounts.coordinator.client.from('wishlist_items').insert({wedding_id:f.weddingA,category_id:category.id,title:'Workflow managed gift',quantity_required:2,price_minor:150000,currency:'NGN'}).select().single());
+    assert.equal(must(await f.anon.from('wishlist_items').select('id').eq('id',item.id)).length,0);
+    assert.ok((await f.accounts.viewer.client.from('wishlist_items').insert({wedding_id:f.weddingA,title:'Forbidden viewer gift'})).error);
+    assert.equal(must(await f.accounts.ownerB.client.from('wishlist_items').update({title:'Wrong tenant'}).eq('id',item.id).select('id')).length,0);
+    must(await f.accounts.coordinator.client.from('wishlist_items').update({quantity_required:3,price_minor:250000,is_published:true}).eq('id',item.id));
+    assert.equal(must(await f.anon.from('wishlist_items').select('price_minor').eq('id',item.id).single()).price_minor,250000);
+    const other=must(await f.accounts.ownerB.client.from('wishlist_categories').insert({wedding_id:f.weddingB,title:'Other tenant category'}).select().single());
+    assert.ok((await f.accounts.coordinator.client.from('wishlist_items').update({category_id:other.id}).eq('id',item.id)).error);
+    const registry=await fetch(`${origin}/admin/${f.weddingA}/registry`,{headers:await cookiesFor(f.accounts.coordinator)});
+    assert.equal(registry.status,200);assert.ok((await registry.text()).includes('Workflow managed gift'));
+    const readOnly=await fetch(`${origin}/admin/${f.weddingA}/registry`,{headers:await cookiesFor(f.accounts.viewer)});
+    assert.ok(!(await readOnly.text()).includes('Add a gift'));
+    must(await f.accounts.coordinator.client.from('wishlist_items').delete().eq('id',item.id));
+    must(await f.accounts.coordinator.client.from('wishlist_categories').delete().eq('id',category.id));
+    assert.equal(must(await f.service.from('wishlist_items').select('id').eq('id',item.id)).length,0);
+  });
+
+  test('gift reservation HTTP workflows prevent concurrent oversubscription and keep cancellation private',async()=>{
+    const path=`${origin}/api/weddings/${f.tag}-a/gifts/${f.item.id}/reserve`;
+    const reserve=()=>fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({quantity:1,name:'Private gift guest',email:`${f.tag}@example.test`})});
+    const responses=await Promise.all(Array.from({length:8},reserve));
+    assert.equal(responses.filter(response=>response.status===200).length,1);
+    assert.equal(responses.filter(response=>response.status===409).length,7);
+    const saved=await responses.find(response=>response.status===200).json();
+    const token=new URL(saved.cancellation_url).pathname.split('/').at(-1);
+    assert.match(token,/^[a-f0-9]{64}$/);
+    const receipt=await fetch(`${origin}/gift-reservations/${token}`);assert.equal(receipt.status,200);assert.equal(receipt.headers.get('referrer-policy'),'no-referrer');
+    const html=await receipt.text();assert.ok(html.includes(f.item.title));assert.ok(!html.includes('Private gift guest'));
+    const cancel=await fetch(`${origin}/api/gift-reservations/${token}/cancel`,{method:'POST'});assert.equal(cancel.status,200);
+    const availability=must(await f.anon.rpc('gift_availability',{p_wedding_id:f.weddingA}));assert.equal(availability.find(item=>item.item_id===f.item.id).quantity_remaining,1);
+    const again=await (await reserve()).json();
+    must(await f.accounts.coordinator.client.rpc('set_reservation_status',{p_wedding_id:f.weddingA,p_reservation_id:again.reservation_id,p_status:'fulfilled'}));
+    const fulfilledToken=new URL(again.cancellation_url).pathname.split('/').at(-1);
+    assert.equal((await fetch(`${origin}/api/gift-reservations/${fulfilledToken}/cancel`,{method:'POST'})).status,409);
+    assert.ok((await f.accounts.ownerB.client.rpc('registry_inventory',{p_wedding_id:f.weddingA})).error);
+    assert.equal(must(await f.accounts.viewer.client.rpc('registry_inventory',{p_wedding_id:f.weddingA})).find(item=>item.item_id===f.item.id).quantity_remaining,0);
+  });
+
+  test('missing payment configuration never creates a fake payment and receipt ignores forged callback status',async()=>{
+    must(await f.service.from('site_settings').insert({wedding_id:f.weddingA,is_published:true,content:{contributions_enabled:true}}));
+    const response=await fetch(`${origin}/api/weddings/${f.tag}-a/contributions`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount:'1000',email:'guest@example.test'})});
+    assert.equal(response.status,503);
+    assert.equal(must(await f.service.from('contributions').select('id').eq('wedding_id',f.weddingA)).length,0);
+    const reference=`loop-${randomUUID()}`;
+    must(await f.service.from('contributions').insert({wedding_id:f.weddingA,reference,amount_minor:100000}));
+    const receipt=await fetch(`${origin}/${f.tag}-a/contribution?reference=${reference}&status=success`);
+    const body=await receipt.text();assert.equal(receipt.status,200);assert.ok(body.includes('Awaiting payment confirmation.'));assert.ok(!body.includes('has been verified.'));
+    assert.equal((await fetch(`${origin}/api/payments/paystack/webhook`,{method:'POST',body:'{}'})).status,503);
   });
 
   test('limiter is atomic/service-only and invitation jobs never persist readable tokens',async()=>{

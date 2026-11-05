@@ -61,6 +61,14 @@ Implemented: membership-protected guest/group CRUD, search and guest pagination,
 
 Live email delivery still requires `RESEND_API_KEY` and `RESEND_FROM_EMAIL`; neither is configured. Transport tests use controlled responses and do not claim actual provider delivery. Browser action/interaction QA remains deferred under the user’s instruction. See manual-resolution.md. No Phase 5 implementation has started.
 
+## Phase 5 — Registry/payments — IMPLEMENTED; PROVIDER GATE OPEN
+
+Implemented: gift/category CRUD and image selection, real quantity reporting, public atomic reservations, opaque private cancellation links, fulfilment/release controls, optional NGN contributions, server-side Paystack initialization, timestamped/legacy webhook validation, independent provider transaction verification, exact 64-bit transaction IDs, and verified-only receipts. Migration 010 is applied and database types regenerated.
+
+Passing evidence: production build/lint/strict TypeScript; four payment logic/transport tests; nine workflow groups including real gift/category CRUD, eight simultaneous HTTP reservation attempts for one unit, cancellation and fulfilment, tenant/role checks, absent-configuration behavior and forged callback rejection; ten real database integration groups; four public HTTP groups; database lint.
+
+**Not complete:** actual Paystack sandbox checkout/webhook verification cannot run because provider credentials are absent. Controlled provider responses are explicitly test fixtures, not proof of a live provider integration. `npm run verify:paystack` is prepared and refuses live keys. Browser QA remains deferred by the user. Phase 6 has not started because the financial verification gate remains open.
+
 ## Sequential gates
 
 | Phase | Status | Required acceptance evidence |
@@ -69,7 +77,7 @@ Live email delivery still requires `RESEND_API_KEY` and `RESEND_FROM_EMAIL`; nei
 | 2 Database | Complete | Migrations apply; tested RLS/tenant isolation/storage/gift concurrency/RSVP uniqueness; generated types |
 | 3 Public website | Implemented; HTTP/data/SEO checks pass; browser QA deferred | All routes, Supabase content, mobile layouts, publication filtering, dynamic SEO |
 | 4 Invitations/RSVP | Acceptance checks pass; live email/browser QA deferred | Hashed secure tokens, server allowances, group privacy, RSVP/CSV integration |
-| 5 Registry/payments | Not started | Gift CRUD, concurrency, verified signatures/transactions, webhook idempotency |
+| 5 Registry/payments | Implemented; local checks pass; actual Paystack verification pending | Gift CRUD, concurrency, verified signatures/transactions, webhook idempotency |
 | 6 Administration | Not started | Persisted CRUD, server and RLS roles, preview/publish, real analytics |
 | 7 Advanced operations | Not started | Email retry logs, gallery permissions, moderation, secure unique check-in, seating capacity |
 | 8 Production readiness | Not started | Critical suites, tenant isolation, production secrets, deployment and recovery documentation |

@@ -4,7 +4,7 @@ Wedding website and management platform, built sequentially from [the specificat
 
 ## Current scope
 
-Phases 1–2 are verified; Phase 3 public routes pass HTTP/data/SEO checks, with browser QA deferred. Phase 4 backend/HTTP acceptance checks pass; live email setup and browser QA remain documented follow-ups. The root page is the platform entry point, not a sample wedding. Public wedding routes and database tables begin only after their prerequisite gates. See [implementation status](docs/implementation-status.md).
+Phases 1–2 are verified; Phase 3 public routes pass HTTP/data/SEO checks, with browser QA deferred. Phase 4 backend/HTTP acceptance checks pass. Phase 5 is implemented and passes local tests, with actual Paystack verification still required before Phase 6. Live email setup and browser QA remain documented follow-ups. The root page is the platform entry point, not a sample wedding. Public wedding routes and database tables begin only after their prerequisite gates. See [implementation status](docs/implementation-status.md).
 
 ## Requirements
 
@@ -34,7 +34,9 @@ Apply the database using `npx --no-install supabase migration up --local`, then 
 | `RESEND_FROM_EMAIL` | Verified sender address/domain |
 | `RATE_LIMIT_SECRET` | Optional server-only HMAC key; defaults to the service key when blank |
 | `TRUST_PROXY_HEADERS` | Default false; enable only behind a proxy that overwrites forwarding headers |
-| `PAYSTACK_SECRET_KEY` | Server-only payment credential, Phase 5 |
+| `PAYSTACK_SECRET_KEY` | Server-only Paystack API credential |
+| `PAYSTACK_WEBHOOK_SECRET` | Current timestamped webhook signing secret |
+| `PAYSTACK_WEBHOOK_PREVIOUS_SECRET` | Optional signing-secret rotation overlap |
 | `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` | Browser payment identifier, Phase 5 |
 
 Never commit `.env.local`, paste secrets into reports, or prefix private credentials with `NEXT_PUBLIC_`. The application currently uses only the public Supabase URL/key. It validates configuration when a Supabase client is requested, so static pages can build without credentials. Authentication routes require a working connection. Provider credentials are deferred until their phases.
@@ -45,6 +47,8 @@ Never commit `.env.local`, paste secrets into reports, or prefix private credent
 - `npm run typecheck`: strict TypeScript.
 - `npm run build`: production compilation and route generation.
 - `npm run test:e2e`: production-server browser checks on desktop and mobile. Build first and configure Supabase. Install Chromium using `npx playwright install chromium` if necessary, or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium` to use an installed Chromium.
+- `npm run test:payments`: controlled payment/signature/transport tests; does not contact Paystack.
+- `npm run verify:paystack`: explicit sandbox-only verification against a configured real Paystack account and public webhook; see manual-resolution.md first.
 - `npm run test:invitations`: Phase 4 CSV/RSVP/rate-limit/delivery tests against local Supabase and a production server; real sending is disabled in this test process.
 - `npm run test:public`: production HTTP acceptance checks using real local Supabase (build first).
 - `npm run verify:connection`: real Auth and database API connectivity.

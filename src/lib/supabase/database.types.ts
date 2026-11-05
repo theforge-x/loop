@@ -770,6 +770,11 @@ isOneToOne: false
 "record_rsvp":
 { Args: { "p_accessibility"?: string,"p_attendees": Json,"p_dietary"?: string,"p_event_ids"?: (string)[],"p_group_id": string,"p_message"?: string,"p_status": Database["public"]['Enums']["rsvp_status"],"p_wedding_id": string }; Returns: string
                            },
+"registry_inventory":
+{ Args: { "p_wedding_id": string }; Returns: {
+              "item_id": string,"quantity_remaining": number,"quantity_reserved": number
+            }[]
+                           },
 "reserve_gift":
 { Args: { "p_email"?: string,"p_item_id": string,"p_message"?: string,"p_name"?: string,"p_quantity": number,"p_reveal_identity"?: boolean,"p_wedding_id": string }; Returns: Json
                            },

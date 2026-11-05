@@ -25,6 +25,12 @@ export async function deliverNotification(id: string) {
       if (token.error) throw new Error("Unable to issue invitation.");
       const url = new URL(`/invitation/${token.data}`, process.env.NEXT_PUBLIC_APP_URL).toString();
       subject = `You’re invited — ${names}`; text = `${names} would love you to join their celebration. Your personal invitation: ${url}`;
+    } else if (job.notification_type === "gift_reservation" && typeof payload.reservation_id === "string") {
+      const reservation = await client.from("gift_reservations").select("quantity,wishlist_item_id").eq("wedding_id", job.wedding_id).eq("id", payload.reservation_id).single();
+      if (reservation.error) throw new Error("Gift reservation unavailable.");
+      const item = await client.from("wishlist_items").select("title").eq("wedding_id", job.wedding_id).eq("id", reservation.data.wishlist_item_id).single();
+      if (item.error) throw new Error("Gift unavailable.");
+      subject = `Gift reservation — ${names}`; text = `Your gift reservation for ${names} is saved: ${reservation.data.quantity} × ${item.data.title}. This is a physical gift reservation, separate from any payment. Keep the private management link shown when you reserved the gift.`;
     } else if (job.notification_type === "rsvp_confirmation") {
       subject = `Your RSVP — ${names}`; text = `Your RSVP has been saved for ${names}. Response: ${String(payload.status ?? "received")}. Use your personal invitation to review or update your response.`;
     } else throw new Error("Unsupported email notification type.");

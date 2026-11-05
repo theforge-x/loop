@@ -12,3 +12,4 @@ supabase/.branches/
 next-env.d.ts
 .local-dev-accounts.json
 **/.~lock.*#
+.local-paystack-verification.json
