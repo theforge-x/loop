@@ -21,7 +21,7 @@ All stated Phase 1 acceptance criteria now pass. The additional browser QA remai
 - `npm run check`: passed lint, strict TypeScript, and production build (Next.js 16.4.5).
 - Production HTTP smoke checks: `/` returns 200 with expected content; unknown page returns 404 with recovery link.
 - First public browser run: could not launch the system Chromium because of local display/GPU configuration; no page assertions executed. Installing Playwright headless shell before retrying.
-- First Supabase startup: registry timeouts/DNS failures prevented PostgreSQL and gateway image completion. Retry has downloaded Auth, REST, and gateway; PostgreSQL remains pending.
+- Initial Supabase startup hit registry timeouts/DNS failures; retry completed and all local services, connectivity checks, and Storage integration tests now pass.
 - No hosted project credentials were provided, and no fake connection is used.
 
 ## Phase 2 — Database — COMPLETE
@@ -51,7 +51,7 @@ These tests validate database behavior. Paystack HTTP signature/provider verific
 - [x] `npm run check` passes; `npm run test:public` passes all 4 production HTTP integration groups (nine public routes plus invitation/admin/image checks).
 - [ ] Browser/mobile interaction verification remains deferred under the user’s instruction. It is not claimed as passing.
 
-Public guestbook submission, RSVP writes, reservations, email delivery and administration editing remain in their assigned subsequent phases. No unavailable action is presented as a saved transaction.
+Phase 3 originally left write workflows to their assigned later phases. Their implemented/verified status is recorded in the sections below; public guestbook submission and the complete CMS still await their phases.
 
 ## Phase 4 — Invitations/RSVP — ACCEPTANCE CHECKS PASS; live email/browser QA deferred
 
@@ -59,7 +59,7 @@ Implemented: membership-protected guest/group CRUD, search and guest pagination,
 
 `npm run test:invitations` passes all 6 workflow groups: quoted/formula-safe CSV, transactional import/rollback and role restrictions, tenant-protected HTTP export, valid/invalid/expired/over-limit RSVP requests, origin checks, saved responses despite email failure, atomic limits, invitation token-field/revocation restrictions, queue deduplication, and controlled Resend transport tests. Migrations 008–009 preserve delivery state on deduplicated jobs and protect token/delivery columns behind database routines. Lint, strict TypeScript, production build and database lint pass.
 
-Live email delivery still requires `RESEND_API_KEY` and `RESEND_FROM_EMAIL`; neither is configured. Transport tests use controlled responses and do not claim actual provider delivery. Browser action/interaction QA remains deferred under the user’s instruction. See manual-resolution.md. No Phase 5 implementation has started.
+Live email delivery still requires `RESEND_API_KEY` and `RESEND_FROM_EMAIL`; neither is configured. Transport tests use controlled responses and do not claim actual provider delivery. Browser action/interaction QA remains deferred under the user’s instruction. See manual-resolution.md. Phase 5 progress is recorded below.
 
 ## Phase 5 — Registry/payments — IMPLEMENTED; PROVIDER GATE OPEN
 
@@ -81,3 +81,9 @@ Passing evidence: production build/lint/strict TypeScript; four payment logic/tr
 | 6 Administration | Not started | Persisted CRUD, server and RLS roles, preview/publish, real analytics |
 | 7 Advanced operations | Not started | Email retry logs, gallery permissions, moderation, secure unique check-in, seating capacity |
 | 8 Production readiness | Not started | Critical suites, tenant isolation, production secrets, deployment and recovery documentation |
+
+## Committed milestones
+
+- `b039805`: application/data/public-site foundation and initial Phase 4 checkpoint.
+- `8da42fb`: verified Phase 4 workflows and invitation field/revocation safeguards.
+- `b688966`: Phase 5 implementation and passing local checks; actual provider verification remains open.
