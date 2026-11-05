@@ -1,0 +1,2 @@
+-- Auth-backed development fixtures are created by npm run db:seed.
+-- This seed file intentionally does not create shared passwords or seed production content.

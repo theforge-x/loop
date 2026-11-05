@@ -1,0 +1,34 @@
+@import "tailwindcss";
+:root {
+  --background: #faf7f1; --foreground: #303b32;
+  --card: #fffdf9; --card-foreground: #303b32;
+  --primary: #344b3d; --primary-foreground: #fffdf9;
+  --secondary: #e9e7dc; --secondary-foreground: #344b3d;
+  --muted: #efebe3; --muted-foreground: #656b60;
+  --accent: #e6d5c0; --accent-foreground: #865d41;
+  --destructive: #a3342e; --border: #d9dbcf; --input: #b5bdac; --ring: #5e7353;
+  --radius: 0.75rem;
+}
+@theme inline {
+  --color-background: var(--background); --color-foreground: var(--foreground);
+  --color-card: var(--card); --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary); --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary); --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted); --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent); --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive); --color-border: var(--border); --color-input: var(--input); --color-ring: var(--ring);
+  --font-sans: Arial, Helvetica, sans-serif;
+  --font-serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  --radius-lg: var(--radius);
+}
+@layer base {
+  * { border-color: var(--border); }
+  body { background: var(--background); color: var(--foreground); font-family: var(--font-sans); }
+  h1, h2, h3 { font-family: var(--font-serif); font-weight: 400; }
+  ::selection { background: var(--accent); color: var(--foreground); }
+  button, a, input { -webkit-tap-highlight-color: transparent; }
+  a:focus-visible { outline: 2px solid var(--ring); outline-offset: 5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}

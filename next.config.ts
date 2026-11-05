@@ -1,0 +1,18 @@
+import type { NextConfig } from "next";
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL) : null;
+const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: supabaseUrl ? [{ protocol: supabaseUrl.protocol === "http:" ? "http" : "https", hostname: supabaseUrl.hostname, port: supabaseUrl.port, pathname: "/storage/v1/object/sign/wedding-media/**" }] : [],
+    dangerouslyAllowLocalIP: Boolean(supabaseUrl && ["127.0.0.1", "localhost"].includes(supabaseUrl.hostname)),
+  },
+  poweredByHeader: false,
+  experimental: { serverActions: { bodySizeLimit: "3mb" } },
+  async headers() {
+    return [{ source: "/:path*", headers: [
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      { key: "X-Frame-Options", value: "DENY" },
+    ] }, { source: "/invitation/:path*", headers: [{ key: "Referrer-Policy", value: "no-referrer" }, { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }] }];
+  },
+};
+export default nextConfig;

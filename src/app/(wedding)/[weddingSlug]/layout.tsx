@@ -1,0 +1,11 @@
+import Link from "next/link";
+import type { CSSProperties } from "react";
+import { getWedding } from "@/lib/wedding/data";
+import { WeddingNavigation } from "@/components/wedding/navigation";
+import { formatWeddingDate } from "@/lib/wedding/content";
+export default async function WeddingLayout({ children, params }: { children: React.ReactNode; params: Promise<{ weddingSlug: string }> }) {
+  const wedding = await getWedding((await params).weddingSlug);
+  const theme = wedding.theme;
+  const style = { ...(theme.primary ? { "--primary": theme.primary } : {}), ...(theme.background ? { "--background": theme.background } : {}), ...(theme.foreground ? { "--foreground": theme.foreground } : {}), ...(theme.accent ? { "--accent": theme.accent } : {}) } as CSSProperties;
+  return <div style={style} className="min-h-dvh bg-background text-foreground"><header className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 py-6 md:px-12"><Link href={`/${wedding.slug}`} aria-label={`${wedding.partner_one_name} and ${wedding.partner_two_name} wedding home`} className="font-serif text-3xl italic">{wedding.partner_one_name.charAt(0)} <span className="text-accent-foreground">&amp;</span> {wedding.partner_two_name.charAt(0)}</Link><WeddingNavigation slug={wedding.slug} /></header><main id="main-content">{children}</main><footer className="mt-20 border-t px-6 py-14 text-center md:mt-32"><p className="font-serif text-3xl italic">{wedding.partner_one_name} &amp; {wedding.partner_two_name}</p>{wedding.wedding_date && <p className="mt-4 text-xs tracking-wider uppercase text-muted-foreground">{formatWeddingDate(wedding.wedding_date, wedding.timezone)}</p>}{wedding.content.footer_text && <p className="mx-auto mt-6 max-w-md text-sm leading-7 text-muted-foreground">{wedding.content.footer_text}</p>}<Link href="/" className="mt-10 inline-block text-[10px] tracking-[0.2em] uppercase text-muted-foreground">Made with Loop</Link></footer></div>;
+}
