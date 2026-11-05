@@ -11,3 +11,4 @@ supabase/.branches/
 *.tsbuildinfo
 next-env.d.ts
 .local-dev-accounts.json
+**/.~lock.*#

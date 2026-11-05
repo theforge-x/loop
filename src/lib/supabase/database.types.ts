@@ -773,6 +773,9 @@ isOneToOne: false
 "reserve_gift":
 { Args: { "p_email"?: string,"p_item_id": string,"p_message"?: string,"p_name"?: string,"p_quantity": number,"p_reveal_identity"?: boolean,"p_wedding_id": string }; Returns: Json
                            },
+"revoke_invitation":
+{ Args: { "p_group_id": string,"p_wedding_id": string }; Returns: undefined
+                           },
 "set_reservation_status":
 { Args: { "p_reservation_id": string,"p_status": Database["public"]['Enums']["reservation_status"],"p_wedding_id": string }; Returns: undefined
                            },

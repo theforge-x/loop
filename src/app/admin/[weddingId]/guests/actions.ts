@@ -65,7 +65,7 @@ export async function generateInvitation(id: string, _state: ActionState, form: 
   } catch (error) { return failed(error); }
 }
 export async function sendInvitation(id: string, _state: ActionState, form: FormData): Promise<ActionState> {
-  try { const { client, user } = await requireGuestOperator(id); await limitRequest("send-invitation", user.id, 30, 60); const job = checked(await client.rpc("queue_invitation", { p_wedding_id: id, p_group_id: z.uuid().parse(form.get("id")) })); if (!job) throw new Error("Unable to queue invitation."); after(() => deliverNotification(job)); refresh(id); return { message: "Invitation queued. Delivery status is recorded below. Sending issues a new personal link." }; }
+  try { const { client, user } = await requireGuestOperator(id); await limitRequest("send-invitation", user.id, 30, 60); const job = checked(await client.rpc("queue_invitation", { p_wedding_id: id, p_group_id: z.uuid().parse(form.get("id")) })); if (!job) throw new Error("Unable to queue invitation."); const existing = checked(await client.from("notifications").select("status").eq("wedding_id", id).eq("id", job).single()); if (existing?.status === "sent") { refresh(id); return { message: "An invitation was already sent for this group in the last minute." }; } after(() => deliverNotification(job)); refresh(id); return { message: "Invitation queued. Delivery status is recorded below. Sending issues a new personal link." }; }
   catch (error) { return failed(error); }
 }
 export async function importCsv(id: string, _state: ActionState, form: FormData): Promise<ActionState> {
@@ -86,4 +86,9 @@ export async function retryNotification(id: string, _state: ActionState, form: F
     if (!job || !["pending", "failed"].includes(job.status)) throw new Error("This email is not awaiting retry.");
     after(() => deliverNotification(job.id)); refresh(id); return { message: "Delivery retry scheduled." };
   } catch (error) { return failed(error); }
+}
+
+export async function revokeInvitation(id: string, _state: ActionState, form: FormData): Promise<ActionState> {
+  try { const { client } = await requireGuestOperator(id); checked(await client.rpc("revoke_invitation", { p_wedding_id: id, p_group_id: z.uuid().parse(form.get("id")) })); refresh(id); return { message: "The invitation link and QR code have been revoked." }; }
+  catch (error) { return failed(error); }
 }

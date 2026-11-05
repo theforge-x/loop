@@ -53,11 +53,13 @@ These tests validate database behavior. Paystack HTTP signature/provider verific
 
 Public guestbook submission, RSVP writes, reservations, email delivery and administration editing remain in their assigned subsequent phases. No unavailable action is presented as a saved transaction.
 
-## Phase 4 — Invitations/RSVP — IN PROGRESS
+## Phase 4 — Invitations/RSVP — ACCEPTANCE CHECKS PASS; live email/browser QA deferred
 
 Implemented: membership-protected guest/group CRUD, search and guest pagination, authenticated CSV export, atomic CSV import RPC, secure link/QR generation, invitation delivery queue/status, personalized RSVP form, validated/rate-limited RSVP endpoint, persisted email outbox and Resend transport/retry handling. Migration 007 is applied and types regenerated.
 
-The phase is **not complete**: dedicated Phase 4 workflow/CSV/rate-limit tests are still required. Real email delivery requires `RESEND_API_KEY` and `RESEND_FROM_EMAIL`; neither is configured. Browser action/interaction QA remains deferred. No Phase 5 implementation has started.
+`npm run test:invitations` passes all 6 workflow groups: quoted/formula-safe CSV, transactional import/rollback and role restrictions, tenant-protected HTTP export, valid/invalid/expired/over-limit RSVP requests, origin checks, saved responses despite email failure, atomic limits, invitation token-field/revocation restrictions, queue deduplication, and controlled Resend transport tests. Migrations 008–009 preserve delivery state on deduplicated jobs and protect token/delivery columns behind database routines. Lint, strict TypeScript, production build and database lint pass.
+
+Live email delivery still requires `RESEND_API_KEY` and `RESEND_FROM_EMAIL`; neither is configured. Transport tests use controlled responses and do not claim actual provider delivery. Browser action/interaction QA remains deferred under the user’s instruction. See manual-resolution.md. No Phase 5 implementation has started.
 
 ## Sequential gates
 
@@ -66,7 +68,7 @@ The phase is **not complete**: dedicated Phase 4 workflow/CSV/rate-limit tests a
 | 1 Foundation | Complete; additional browser QA deferred | Running app, real Supabase connection, strict TS, layouts, documented setup |
 | 2 Database | Complete | Migrations apply; tested RLS/tenant isolation/storage/gift concurrency/RSVP uniqueness; generated types |
 | 3 Public website | Implemented; HTTP/data/SEO checks pass; browser QA deferred | All routes, Supabase content, mobile layouts, publication filtering, dynamic SEO |
-| 4 Invitations/RSVP | In progress | Hashed secure tokens, server allowances, group privacy, RSVP/CSV integration |
+| 4 Invitations/RSVP | Acceptance checks pass; live email/browser QA deferred | Hashed secure tokens, server allowances, group privacy, RSVP/CSV integration |
 | 5 Registry/payments | Not started | Gift CRUD, concurrency, verified signatures/transactions, webhook idempotency |
 | 6 Administration | Not started | Persisted CRUD, server and RLS roles, preview/publish, real analytics |
 | 7 Advanced operations | Not started | Email retry logs, gallery permissions, moderation, secure unique check-in, seating capacity |

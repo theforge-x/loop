@@ -19,7 +19,8 @@
     "verify:connection": "node --env-file=.env.local scripts/verify-connection.mjs",
     "test:database": "node --env-file=.env.local --test --test-concurrency=1 tests/database/platform.test.mjs",
     "db:seed": "node --env-file=.env.local scripts/seed-development.mjs",
-    "test:public": "node --env-file=.env.local --test tests/database/public-routes.test.mjs"
+    "test:public": "node --env-file=.env.local --test tests/database/public-routes.test.mjs",
+    "test:invitations": "node --experimental-strip-types --env-file=.env.local --test tests/workflows/invitations.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
