@@ -67,7 +67,7 @@ Implemented: gift/category CRUD and image selection, real quantity reporting, pu
 
 Passing evidence: production build/lint/strict TypeScript; four payment logic/transport tests; nine workflow groups including real gift/category CRUD, eight simultaneous HTTP reservation attempts for one unit, cancellation and fulfilment, tenant/role checks, absent-configuration behavior and forged callback rejection; ten real database integration groups; four public HTTP groups; database lint.
 
-**Not complete:** actual Paystack sandbox checkout/webhook verification cannot run because provider credentials are absent. Controlled provider responses are explicitly test fixtures, not proof of a live provider integration. `npm run verify:paystack` is prepared and refuses live keys. Browser QA remains deferred by the user. Phase 6 has not started because the financial verification gate remains open.
+**Not complete:** actual Paystack sandbox checkout/webhook verification cannot run because provider credentials are absent. Controlled provider responses are explicitly test fixtures, not proof of a live provider integration. `npm run verify:paystack` is prepared and refuses live keys. Browser QA remains deferred by the user. The user authorized proceeding past checks that require manual intervention. The missing Paystack credentials are flagged in manual-resolution.md; provider verification remains open.
 
 ## Sequential gates
 
@@ -78,7 +78,7 @@ Passing evidence: production build/lint/strict TypeScript; four payment logic/tr
 | 3 Public website | Implemented; HTTP/data/SEO checks pass; browser QA deferred | All routes, Supabase content, mobile layouts, publication filtering, dynamic SEO |
 | 4 Invitations/RSVP | Acceptance checks pass; live email/browser QA deferred | Hashed secure tokens, server allowances, group privacy, RSVP/CSV integration |
 | 5 Registry/payments | Implemented; local checks pass; actual Paystack verification pending | Gift CRUD, concurrency, verified signatures/transactions, webhook idempotency |
-| 6 Administration | Not started | Persisted CRUD, server and RLS roles, preview/publish, real analytics |
+| 6 Administration | Local acceptance checks pass | Persisted CRUD, server and RLS roles, preview/publish, real analytics |
 | 7 Advanced operations | Not started | Email retry logs, gallery permissions, moderation, secure unique check-in, seating capacity |
 | 8 Production readiness | Not started | Critical suites, tenant isolation, production secrets, deployment and recovery documentation |
 
@@ -87,3 +87,11 @@ Passing evidence: production build/lint/strict TypeScript; four payment logic/tr
 - `b039805`: application/data/public-site foundation and initial Phase 4 checkpoint.
 - `8da42fb`: verified Phase 4 workflows and invitation field/revocation safeguards.
 - `b688966`: Phase 5 implementation and passing local checks; actual provider verification remains open.
+
+## Phase 6 — Administration — LOCAL ACCEPTANCE CHECKS PASS (2026-11-09)
+
+Implemented visual website/identity/theme forms, private preview using the public homepage component, separate tenant-protected content drafts, transactional publication, story/events/FAQ/travel/announcement/album/photo forms, role-protected team membership and final-owner protection, real guest/reservation/payment/activity metrics, payment filtering/pagination, operational RSVP review/editing, moderation, seating/check-in controls and CSV reports. Existing guest and registry modules are retained.
+
+Evidence: `npm run check` passed lint, strict TypeScript and production build; `npm run db:lint` passed; `npm run test:administration` passed 4 groups covering every CMS content module, create/edit/publish/hide/delete persistence, role/tenant restrictions, private preview, transactional website publication and final-owner retention. Regression suites passed: database 10/10, public HTTP 4/4, invitations/registry 9/9. A focused desktop browser check passed; a full desktop/mobile rerun is underway. Browser interaction coverage for the new forms is added during final QA.
+
+Migrations 011–012 applied locally. Supabase default anonymous grants were explicitly removed from the draft table. Publication does not expose drafts through public `SELECT *` queries. Media uploads, communication scheduling and secure QR lookup are the Phase 7 extensions to the administration shell.

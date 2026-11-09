@@ -124,3 +124,9 @@ The application records a logical event key `charge.success:<exact transaction i
 Verify gift/category action forms, image selection/publication, self-updating availability after navigation/refresh, private cancellation links, fulfilment/release, the contribution opt-in, provider-hosted checkout navigation and receipt display in a supported mobile/desktop browser. The image selector uses this wedding’s media library; the complete upload/CMS experience belongs to Phase 6. Signed approved-image URLs expire after one hour, and image caching must be considered when retracting previously shared assets during the production review. Advanced automatic abandoned-reservation release and retry scheduling remain operational follow-ups.
 
 **Gate:** Phase 6 has not started. Phase 5 remains awaiting the actual configured-provider verification rather than being described as production-ready.
+
+## Continuation authorization and verification — 2026-11-09
+
+The user now explicitly permits continuing when a phase check requires manual intervention, provided the check is flagged. `npm run verify:paystack` was rerun and rejected missing Paystack TEST credentials. Actual sandbox checkout/webhook verification remains OPEN; no provider success is claimed. Resend sender/account setup likewise remains OPEN.
+
+Local Supabase is running; all existing database/public/invitation regression suites pass. The previously blocked focused desktop Playwright check now passes using the installed browser without application workarounds. Full mobile/desktop QA and new workflow interaction checks are being rerun; historical browser failures above are retained as diagnostics, not current proof of failure.

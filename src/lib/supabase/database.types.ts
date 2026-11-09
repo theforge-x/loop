@@ -101,6 +101,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"content_drafts": {
+                  Row: {
+                    "created_at": string,"id": string,"module": string,"payload": NonNullable<Json>,"record_id": string,"updated_at": string,"wedding_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"module": string,"payload": NonNullable<Json>,"record_id"?: string,"updated_at"?: string,"wedding_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"module"?: string,"payload"?: NonNullable<Json>,"record_id"?: string,"updated_at"?: string,"wedding_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "content_drafts_wedding_id_fkey"
+      columns: ["wedding_id"]
+isOneToOne: false
+      referencedRelation: "weddings"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"contributions": {
                   Row: {
                     "amount_minor": number,"contributor_name": string | null,"created_at": string,"currency": string,"email": string | null,"id": string,"message": string | null,"provider": string,"provider_transaction_id": string | null,"reference": string,"status": Database["public"]['Enums']["contribution_status"],"updated_at": string,"verified_at": string | null,"wedding_id": string,"wishlist_item_id": string | null
@@ -763,6 +783,12 @@ isOneToOne: false
                            },
 "issue_invitation":
 { Args: { "p_expires_at": string,"p_group_id": string,"p_wedding_id": string }; Returns: string
+                           },
+"publish_content":
+{ Args: { "p_draft_id": string,"p_publish"?: boolean,"p_wedding_id": string }; Returns: string
+                           },
+"publish_website":
+{ Args: { "p_wedding_id": string }; Returns: undefined
                            },
 "queue_invitation":
 { Args: { "p_group_id": string,"p_wedding_id": string }; Returns: string
