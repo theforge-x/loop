@@ -27,3 +27,17 @@ export async function contentAction(weddingId: string, module: string, _state: A
   return { message: operation === "save" ? "Draft saved. Preview it before publishing." : "Content updated." };
  } catch (error) { unstable_rethrow(error); return { error: true, message: error instanceof z.ZodError ? error.issues.map(i => `${i.path.join(".")}: ${i.message}`).join("; ") : error instanceof Error ? error.message : "Unable to save content." }; }
 }
+
+export async function bulkContentAction(weddingId: string, module: string, _state: ActionState, form: FormData): Promise<ActionState> {
+ try {
+  const key=moduleKey(module);const config=modules[key];const {client,role,wedding}=await getWorkspace(weddingId);
+  if (!(config.roles as readonly string[]).includes(role)) throw new Error("You cannot edit this module.");
+  const ids=z.array(z.uuid()).min(1).max(50).parse(form.getAll("ids"));const operation=z.enum(["publish","hide"]).parse(form.get("operation"));
+  if(operation==="publish"){
+   const drafts=await client.from("content_drafts").select("id").eq("wedding_id",weddingId).eq("module",config.table).in("record_id",ids);
+   if(drafts.error||drafts.data.length!==ids.length)throw new Error("Every selected record needs a saved draft before bulk publication.");
+   const result=await client.rpc("publish_content_batch",{p_wedding_id:weddingId,p_drafts:drafts.data.map(d=>d.id)});if(result.error)throw new Error("No drafts were published. Check linked records and permissions.");
+  }else{const result=await client.from(config.table).update({is_published:false}).eq("wedding_id",weddingId).in("id",ids);if(result.error)throw new Error("Unable to hide selected records.");}
+  revalidatePath(`/admin/${weddingId}`,"layout");revalidatePath(`/${wedding.slug}`,"layout");return{message:"Selected records updated."};
+ }catch(error){unstable_rethrow(error);return{error:true,message:error instanceof z.ZodError?"Choose up to 50 records.":error instanceof Error?error.message:"Unable to apply bulk action."};}
+}

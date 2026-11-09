@@ -19,3 +19,13 @@
 - [Local Supabase development](https://supabase.com/docs/guides/local-development)
 
 The visual reference site was unavailable during initial inspection. The document's written aesthetic is used without copying assets or wedding content.
+
+## Administration and advanced operations
+
+Content drafts live in their own tenant-protected table rather than a JSON column on a publicly readable record. Server forms validate an allowlisted module schema; publication locks and copies the draft transactionally. Bulk publication is all-or-nothing. Identity/theme/site settings have a separate private draft and an atomic publish operation. The public homepage component is reused for authenticated preview; preview inventory comes from actual reservations. Membership changes retain an owner and cannot move a membership identity.
+
+Storage is private and has authenticated tenant/role write policies plus explicit published-asset reads. Upload requests are bounded before multipart parsing, check file signatures and MIME/size, and use generated tenant-prefixed paths. Gallery/photo visibility is independent of object publication. Deletion refuses referenced images; signed URLs already issued may remain usable until expiry.
+
+Notifications claim an atomic lease rather than relying on a processing flag. Expired claims can be recovered; updates include the lease token so a stale worker cannot overwrite a newer claim. Authenticated operators can retry eligible jobs, and the worker authenticates a separate random secret. Delivery events use raw-body Svix verification, a timestamp window, unique event IDs and per-wedding suppression. The database stores no raw invitation token in queued payloads; retries issue replacement invitation links in memory. Provider acceptance and inbox delivery remain distinct, and external acceptance during a timeout cannot be made transactional with PostgreSQL.
+
+The gallery explicitly restores focus to the actual opening thumbnail because multiple Radix triggers otherwise share the final trigger reference. Error-page recovery uses native navigation so it remains functional when the client router is failing. Playwright binds its test server to the same loopback origin used by its browser; production anonymous write protection uses the configured canonical origin and actual request origin.

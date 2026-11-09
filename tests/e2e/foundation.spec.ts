@@ -5,7 +5,7 @@ test("public foundation renders without horizontal overflow", async ({ page }, t
   await expect(page.getByRole("link", { name: "Enter your workspace" })).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
   expect(overflow).toBe(false);
-  await page.screenshot({ path: testInfo.outputPath("loop-home.png"), fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath("loop-home.png"), fullPage: true, animations: "disabled" });
 });
 test("anonymous visitors cannot enter admin", async ({ page }) => {
   await page.goto("/admin");

@@ -869,6 +869,9 @@ isOneToOne: false
 "publish_content":
 { Args: { "p_draft_id": string,"p_publish"?: boolean,"p_wedding_id": string }; Returns: string
                            },
+"publish_content_batch":
+{ Args: { "p_drafts": (string)[],"p_wedding_id": string }; Returns: number
+                           },
 "publish_website":
 { Args: { "p_wedding_id": string }; Returns: undefined
                            },

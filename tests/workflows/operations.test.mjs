@@ -1,3 +1,4 @@
+import {pixelPng} from '../../scripts/database/image.mjs';
 import {before,after,describe,test} from 'node:test';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
@@ -29,7 +30,7 @@ describe('Phase 7 advanced operations acceptance',{timeout:240000},()=>{
   const album=must(await f.accounts.ownerA.client.from('gallery_albums').insert({wedding_id:f.weddingA,title:'Upload album',is_published:true}).select().single());
   const upload=(bytes,type='image/png',albumId=album.id,auth=headers)=>{const data=new FormData();data.set('file',new Blob([bytes],{type}),'photo.png');data.set('album_id',albumId);data.set('alt_text','Uploaded photograph');return fetch(`${origin}/api/admin/${f.weddingA}/media`,{method:'POST',headers:auth,body:data});};
   assert.equal((await upload(Buffer.from('<svg onload="alert(1)"></svg>'))).status,400);
-  const bytes=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nGQAAAAASUVORK5CYII=','base64');
+  const bytes=pixelPng();
   assert.equal((await upload(bytes,'image/png',randomUUID())).status,400);
   const forbidden=await upload(bytes,'image/png',album.id,await cookiesFor(f.accounts.viewer));assert.equal(forbidden.status,403);
   const response=await upload(bytes);assert.equal(response.status,200,await response.clone().text());const {path}=await response.json();

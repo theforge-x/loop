@@ -1,0 +1,10 @@
+import {execFileSync} from 'node:child_process';
+import {writeFileSync} from 'node:fs';
+import {randomBytes} from 'node:crypto';
+if(process.env.CI!=='true')throw new Error('This helper is only for an isolated CI runner. It never replaces local configuration.');
+const status=execFileSync('npx',['--no-install','supabase','status','--output','env'],{encoding:'utf8',stdio:['ignore','pipe','pipe']});
+const values=Object.fromEntries(status.split('\n').flatMap(line=>{const match=line.match(/^([A-Z_]+)="(.*)"$/);return match?[[match[1],match[2]]]:[];}));
+const url=values.API_URL;if(!url||!['127.0.0.1','localhost'].includes(new URL(url).hostname)||!values.ANON_KEY||!values.SERVICE_ROLE_KEY)throw new Error('Local Supabase status did not provide the required CI configuration.');
+const env={NEXT_PUBLIC_APP_URL:'http://localhost:3000',NEXT_PUBLIC_SUPABASE_URL:url,NEXT_PUBLIC_SUPABASE_ANON_KEY:values.ANON_KEY,SUPABASE_SERVICE_ROLE_KEY:values.SERVICE_ROLE_KEY,NEXT_PUBLIC_DEFAULT_TIMEZONE:'Africa/Lagos',RATE_LIMIT_SECRET:randomBytes(32).toString('hex'),TRUST_PROXY_HEADERS:'false',RESEND_API_KEY:'',RESEND_FROM_EMAIL:'',PAYSTACK_SECRET_KEY:'',CRON_SECRET:randomBytes(32).toString('hex')};
+writeFileSync('.env.local',Object.entries(env).map(([key,value])=>`${key}=${value}`).join('\n')+'\n',{mode:0o600,flag:'wx'});
+console.log('Created isolated local CI configuration. Credential values are not logged.');

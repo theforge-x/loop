@@ -38,19 +38,25 @@ export async function deliverNotification(id: string, force = false) {
       if (announcement.error || new Date(announcement.data.publish_at).getTime() > Date.now()) throw new Error("Announcement is unavailable or not yet published.");
       subject = `${announcement.data.title} — ${names}`; text = announcement.data.content;
     } else if (job.notification_type === "event_reminder" && typeof payload.event_id === "string") {
-      const event = await client.from("events").select("title,starts_at,venue_name,address").eq("wedding_id", job.wedding_id).eq("id", payload.event_id).eq("is_published", true).single();
+      const event = await client.from("events").select("title,starts_at,venue_name,address,is_private").eq("wedding_id", job.wedding_id).eq("id", payload.event_id).eq("is_published", true).single();
       if (event.error) throw new Error("Event is unavailable.");
+      if (event.data.is_private) {
+        if (typeof payload.group_id !== "string") throw new Error("Reminder recipient eligibility is unavailable.");
+        const eligible = await client.from("invitation_group_events").select("id").eq("wedding_id",job.wedding_id).eq("event_id",payload.event_id).eq("invitation_group_id",payload.group_id).maybeSingle();
+        if (eligible.error || !eligible.data) { await client.from("notifications").update({ status: "suppressed", last_error: "Recipient is no longer eligible for the private event.", lease_token: null, lease_expires_at: null }).eq("id",id).eq("lease_token",lease); return; }
+      }
       if (new Date(event.data.starts_at).getTime() < Date.now()) { await client.from("notifications").update({ status: "suppressed", last_error: "Event has already started.", lease_token: null, lease_expires_at: null }).eq("id",id).eq("lease_token",lease); return; }
       subject = `A reminder — ${event.data.title}`; text = `${names} look forward to seeing you at ${event.data.title}.\n${event.data.starts_at}\n${event.data.venue_name ?? ""}\n${event.data.address ?? ""}`;
     } else if (job.notification_type === "rsvp_confirmation") {
       subject = `Your RSVP — ${names}`; text = `Your RSVP has been saved for ${names}. Response: ${String(payload.status ?? "received")}. Use your personal invitation to review or update your response.`;
     } else throw new Error("Unsupported email notification type.");
     const providerId = await sendEmail(key, { from, to: job.recipient_email, subject, text, html: emailTemplate(names, text) }, `${job.id}:${job.attempts}`);
-    const saved = await client.from("notifications").update({ status: "sent", provider_message_id: providerId, sent_at: new Date().toISOString(), last_error: null, lease_token: null, lease_expires_at: null }).eq("id", id).eq("lease_token", lease);
+    const saved = await client.from("notifications").update({ status: "sent", provider_message_id: providerId, sent_at: new Date().toISOString(), last_error: null, lease_token: null, lease_expires_at: null }).eq("id", id).eq("lease_token", lease).select("id").maybeSingle();
     if (saved.error) throw new Error("Unable to record email delivery.");
+    if (!saved.data) return;
     if (job.notification_type === "invitation" && typeof payload.group_id === "string") await client.from("invitation_groups").update({ delivery_status: "sent" }).eq("wedding_id", job.wedding_id).eq("id", payload.group_id);
   } catch (error) {
-    await client.from("notifications").update({ status: "failed", last_error: error instanceof Error ? error.message : "Email delivery failed.", next_attempt_at: new Date(Date.now() + Math.min(86400, 60 * 2 ** Math.min(job.attempts - 1, 10)) * 1000).toISOString(), lease_token: null, lease_expires_at: null }).eq("id", id).eq("lease_token", lease);
-    if (job.notification_type === "invitation" && typeof payload.group_id === "string") await client.from("invitation_groups").update({ delivery_status: "failed" }).eq("wedding_id", job.wedding_id).eq("id", payload.group_id);
+    const failed = await client.from("notifications").update({ status: "failed", last_error: error instanceof Error ? error.message : "Email delivery failed.", next_attempt_at: new Date(Date.now() + Math.min(86400, 60 * 2 ** Math.min(job.attempts - 1, 10)) * 1000).toISOString(), lease_token: null, lease_expires_at: null }).eq("id", id).eq("lease_token", lease).select("id").maybeSingle();
+    if (failed.data && job.notification_type === "invitation" && typeof payload.group_id === "string") await client.from("invitation_groups").update({ delivery_status: "failed" }).eq("wedding_id", job.wedding_id).eq("id", payload.group_id);
   }
 }

@@ -1,0 +1,41 @@
+name: Loop acceptance
+on:
+  pull_request:
+  push:
+    branches: [main, dev]
+permissions:
+  contents: read
+concurrency:
+  group: loop-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  acceptance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Start isolated real Supabase
+        run: npx --no-install supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,supavisor,postgres-meta,mailpit
+      - run: node scripts/prepare-ci-env.mjs
+      - run: npm run verify:connection
+      - run: npm run db:lint
+      - run: npm run check
+      - run: npm run test:unit
+      - run: npm run test:payments
+      - run: npm run test:email
+      - run: npm run test:database
+      - run: npm run test:public
+      - run: npm run test:invitations
+      - run: npm run test:administration
+      - run: npm run test:operations
+      - run: npm run test:release
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e -- --reporter=github
+      - name: Stop isolated Supabase
+        if: always()
+        run: npm run supabase:stop

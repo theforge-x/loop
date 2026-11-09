@@ -6,7 +6,7 @@ The schema is multi-tenant: weddings are tenant roots, profiles are shared Auth 
 
 001 creates all relation skeletons, including extended tables, so forward composite foreign keys can be validated immediately. 002 defines explicit RLS, public publication filtering, and role grants. 003 adds restricted transactional routines. 004 adds a private media bucket and object policies. 005 adds query/uniqueness indexes. 006 wires profile creation, immutable tenant identifiers, capacity/allowance guards, owner retention, and audit history. This deliberately adapts the document’s illustrative 006 table creation to avoid unresolved forward relationships.
 
-Migration files are tracked as 001–006 as specified. Do not edit migrations after production application; future changes require new migrations. During local development, reset only deliberately, because it destroys local Auth and application records.
+Migration files are tracked sequentially as 001–015. Do not edit migrations after production application; future changes require new migrations. During local development, reset only deliberately, because it destroys local Auth and application records.
 
 ## Authorization
 
@@ -36,3 +36,9 @@ Guest, invitation, attendee, reservation-identity, contribution, notification, s
 Ten real local integration tests passed without skips: schema RLS/grants, public filtering, tenant/role checks, hashed token validity, transactional/concurrent RSVP, concurrent gifts, financial replay, seating/check-in, real Storage permissions/MIME, and immutable audit history. Database lint passed and CLI-generated TypeScript definitions are used by the app. See `tests/database/platform.test.mjs`.
 
 `npm run db:seed` creates two local wedding fixtures and six Auth accounts covering roles and an outsider. Generated credentials are private local files. Integration fixtures remain in the local database until reset; this preserves append-only history rather than bypassing invariants to erase tests. There is no automatic production seed.
+
+## Administration and delivery migrations
+
+007–010 add invitation delivery safeguards and registry/payment workflows. 011–012 isolate CMS drafts, restrict publication and protect final-owner membership. 013–014 add email event/suppression tables, leased notification claims, operator communication/check-in lookup and limiter cleanup. 015 protects draft identity, adds atomic batch publication, recovers older processing jobs and validates communication groups. Public roles cannot read drafts, delivery events or suppression records. Service-only routines retain explicit grants and safe search paths.
+
+All fifteen versions are applied locally and generated database types reflect that schema. The CLI implicit connection can time out on this host; explicit local database lint with sslmode=disable works. Migrations 013–015 were applied transactionally through container psql and recorded in the Supabase migration history without resetting data.

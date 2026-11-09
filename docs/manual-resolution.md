@@ -1,10 +1,12 @@
-# Deferred infrastructure and browser verification
+# Manual release checks and historical setup diagnostics
+
+Current status: local browser and Supabase checks pass. External provider, hosted deployment, physical camera, remote CI and restore gates remain OPEN. See the final resolution and Phase 8 external release gates below; earlier setup failures are retained as history.
 
 ## User-approved scope
 
 The initial instruction required each phase to meet its definition of done. The user subsequently instructed the agent to document browser and Supabase setup issues, provide recommendations, test everything else, and proceed to Phase 2. These items may be deferred under that instruction; deferred checks are not reported as passing. Database integrity, RLS, transactions, and financial workflows must still receive explicit evidence before being described as validated.
 
-## Browser acceptance checks — unresolved
+## Browser acceptance checks — historical diagnosis; RESOLVED in final QA
 
 ### Environment and expected behavior
 
@@ -73,7 +75,7 @@ This note will be updated when a deferred check obtains a passing result; its hi
 
 The retry completed. Database, Auth, gateway, REST, and Storage are running for the `loop` project. Actual local connection values were written to ignored `.env.local` without printing keys. `npm run verify:connection` passed both Auth settings and REST. All six migrations applied; database lint reported no schema errors; generated types were checked in the typed app; all 10 database integration tests passed, including real Storage API permission tests. Local development fixtures were created. No hosted project was needed. The registry failure is retained above as a reproducible setup note if it recurs.
 
-The browser issue remains unresolved and explicitly deferred by the user. No browser pass is claimed.
+The initial browser issue was deferred at that time. Current passing evidence is recorded in the final resolution below; these earlier failures remain historical diagnostics.
 
 ## Additional Phase 3 verification
 
@@ -123,7 +125,7 @@ The application records a logical event key `charge.success:<exact transaction i
 
 Verify gift/category action forms, image selection/publication, self-updating availability after navigation/refresh, private cancellation links, fulfilment/release, the contribution opt-in, provider-hosted checkout navigation and receipt display in a supported mobile/desktop browser. The image selector uses this wedding’s media library; the complete upload/CMS experience belongs to Phase 6. Signed approved-image URLs expire after one hour, and image caching must be considered when retracting previously shared assets during the production review. Advanced automatic abandoned-reservation release and retry scheduling remain operational follow-ups.
 
-**Gate:** Phase 6 has not started. Phase 5 remains awaiting the actual configured-provider verification rather than being described as production-ready.
+**Historical gate:** Phase 5 awaited configured-provider verification. The continuation authorization below permits later implementation while that external gate remains open.
 
 ## Continuation authorization and verification — 2026-11-09
 
@@ -138,3 +140,20 @@ Local Supabase is running; all existing database/public/invitation regression su
 - Camera: test `/admin/[weddingId]/check-in` on the actual HTTPS mobile device, grant camera access, scan an issued QR, confirm eligible attendees, then retry and revoke. Browser BarcodeDetector support varies; authenticated manual paste/search is available. Secure lookup, expiry/revocation, tenant/role restrictions, concurrent unique check-in and seating capacity all pass automated integration tests.
 - Browser: desktop/mobile automation now runs, and authentication/error-page checks execute. This host intermittently stalls at screenshot capture or link clicks despite successful HTML assertions; do not report those runs as passing. A supported CI browser environment remains the resolution path if diagnostics cannot stabilize this host.
 - Local CLI: implicit Supabase CLI database connections began timing out after the session restart. Direct psql works; `supabase db lint --db-url 'postgresql://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable'` passed with no schema errors (local development credentials only). No data reset was used. Migrations 013–014 were applied with psql single-transaction and matching migration-history entries.
+
+## Phase 8 external release gates — OPEN
+
+- Configure dedicated hosted Supabase and hosting accounts, production secrets, Auth redirects, domain/DNS/HTTPS and monitoring. Run `npm run verify:release`; missing settings are failures, not ignored passes. The validator only verifies configuration shape; account configuration still needs operational evidence.
+- Run actual Paystack sandbox checkout and replay verification before enabling contributions. Live activation and controlled live verification are separate operator checks.
+- Verify actual Resend inbox delivery, signed delivery events and the authenticated deployed scheduler. Confirm hosting plan schedule/duration support.
+- Exercise a physical HTTPS mobile camera and inspect desktop/mobile visuals and accessibility on the deployed preview. Measure real mobile performance on that deployment.
+- Run the committed GitHub CI in the remote repository; local passing commands do not establish a remote CI result.
+- Configure backup retention and separate Storage object backup, perform an isolated restore rehearsal, measure recovery targets and reconcile provider state. No production restore has been attempted.
+
+These require credentials, accounts, a physical device or a deployed environment that are not available in this workspace. Implementation and local automation continue under the user's explicit exception; none of these checks is marked passed. Detailed execution steps are in [production-runbook.md](production-runbook.md).
+
+## Final local browser resolution — 2026-11-09
+
+All 22 scenarios (11 each for desktop and mobile Chromium) pass across final project/focused reruns: responsive foundation, anonymous admin protection, invalid credentials, recovery/noindex, visual website draft/privacy/preview/publication, event draft/publication, RSVP allowance/dietary persistence/reload, gift reservation/private cancellation, guestbook moderation and navigation/gallery keyboard/focus. No skips or forced clicks are used. Earlier full runs failed and were superseded after fixes; they are not counted as passing.
+
+The downloaded headless shell works with GPU disabled, reduced motion and one worker. Browser and server both use the configured http://localhost:3000 origin; a different loopback hostname was correctly rejected by public API origin checks. Accessible role selectors avoid unreliable label matching for select elements. Tests permit 180 seconds for multi-step workflows and 15 seconds per assertion on this slow host. Actual bugs fixed: native error recovery link and returning gallery focus to the original photograph after keyboard movement. These local passes do not replace physical camera, deployed provider, remote CI or deployment checks above.

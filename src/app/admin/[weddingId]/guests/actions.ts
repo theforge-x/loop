@@ -82,8 +82,8 @@ export async function retryNotification(id: string, _state: ActionState, form: F
   try {
     const { client, user } = await requireGuestOperator(id); await limitRequest("retry-email", user.id, 30, 60);
     // RLS verifies tenant ownership before the trusted worker receives the record ID.
-    const job = checked(await client.from("notifications").select("id,status").eq("wedding_id", id).eq("id", z.uuid().parse(form.get("id"))).single());
-    if (!job || !["pending", "failed"].includes(job.status)) throw new Error("This email is not awaiting retry.");
+    const job = checked(await client.from("notifications").select("id,status,attempts").eq("wedding_id", id).eq("id", z.uuid().parse(form.get("id"))).single());
+    if (!job || job.attempts >= 8 || !["pending", "failed"].includes(job.status)) throw new Error("This email is not awaiting retry.");
     after(() => deliverNotification(job.id, true)); refresh(id); return { message: "Delivery retry scheduled." };
   } catch (error) { return failed(error); }
 }

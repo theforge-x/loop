@@ -4,7 +4,7 @@ Wedding website and management platform, built sequentially from [the specificat
 
 ## Current scope
 
-Phases 1–2 are verified; Phase 3 public routes pass HTTP/data/SEO checks, with browser QA deferred. Phase 4 backend/HTTP acceptance checks pass. Phase 5 is implemented and passes local tests, with actual Paystack verification still required before Phase 6. Live email setup and browser QA remain documented follow-ups. The root page is the platform entry point, not a sample wedding. Public wedding routes and database tables begin only after their prerequisite gates. See [implementation status](docs/implementation-status.md).
+Phases 1–7 are implemented with real Supabase-backed public pages, invitations/RSVP, registry/payments, a visual administration CMS, draft preview/publication, media, moderation, seating, QR check-in and communication queues. Phase 8 adds security/SEO checks, component and browser tests, CI and deployment/recovery tooling. Actual Paystack sandbox verification, live Resend delivery, production configuration/deployment and physical-camera QA require manual setup and remain flagged. See [implementation status](docs/implementation-status.md), [manual checks](docs/manual-resolution.md) and the [production runbook](docs/production-runbook.md).
 
 ## Requirements
 
@@ -19,7 +19,7 @@ Phases 1–2 are verified; Phase 3 public routes pass HTTP/data/SEO checks, with
 4. Run `npm run verify:connection`. Both Auth settings and the database REST endpoint must pass.
 5. Run `npm run dev` and open http://localhost:3000.
 
-Apply the database using `npx --no-install supabase migration up --local`, then run `npm run db:seed` for local-only development fixtures. That command uses real Supabase Auth accounts and stores generated credentials in ignored `.local-dev-accounts.json` (mode 0600). It refuses non-local API hosts. Fixtures are never loaded by the production application. The CMS UI is a later phase; authenticated users currently see the workspace shell. There is no public registration UI.
+Apply the database using `npx --no-install supabase migration up --local`, then run `npm run db:seed` for local-only development fixtures. That command uses real Supabase Auth accounts and stores generated credentials in ignored `.local-dev-accounts.json` (mode 0600). It refuses non-local API hosts. Fixtures are never loaded by the production application. Authenticated members can open the overview, website/theme editor, content modules, guests, registry, media, communication, moderation, seating/check-in, payments and team controls. There is no public registration UI.
 
 ## Environment
 
@@ -32,6 +32,8 @@ Apply the database using `npx --no-install supabase migration up --local`, then 
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only privileged key; later trusted workflows |
 | `RESEND_API_KEY` | Server-only Resend sending key |
 | `RESEND_FROM_EMAIL` | Verified sender address/domain |
+| `RESEND_WEBHOOK_SECRET` | Server-only Svix signing secret for verified delivery events |
+| `CRON_SECRET` | Random 32+ character server-only worker authentication secret |
 | `RATE_LIMIT_SECRET` | Optional server-only HMAC key; defaults to the service key when blank |
 | `TRUST_PROXY_HEADERS` | Default false; enable only behind a proxy that overwrites forwarding headers |
 | `PAYSTACK_SECRET_KEY` | Server-only Paystack API credential |
@@ -39,7 +41,7 @@ Apply the database using `npx --no-install supabase migration up --local`, then 
 | `PAYSTACK_WEBHOOK_PREVIOUS_SECRET` | Optional signing-secret rotation overlap |
 | `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` | Browser payment identifier, Phase 5 |
 
-Never commit `.env.local`, paste secrets into reports, or prefix private credentials with `NEXT_PUBLIC_`. The application currently uses only the public Supabase URL/key. It validates configuration when a Supabase client is requested, so static pages can build without credentials. Authentication routes require a working connection. Provider credentials are deferred until their phases.
+Never commit `.env.local`, paste secrets into reports, or prefix private credentials with `NEXT_PUBLIC_`. Public rendering uses an anonymous client; trusted RSVP, registry, payment, guestbook and email workflows also require the server-only service-role key. It validates configuration when a Supabase client is requested, so static pages can build without credentials. Authentication routes require a working connection. Provider credentials are required for actual provider operations; missing configuration is recorded as failure, never fabricated success.
 
 ## Checks
 
@@ -47,6 +49,13 @@ Never commit `.env.local`, paste secrets into reports, or prefix private credent
 - `npm run typecheck`: strict TypeScript.
 - `npm run build`: production compilation and route generation.
 - `npm run test:e2e`: production-server browser checks on desktop and mobile. Build first and configure Supabase. Install Chromium using `npx playwright install chromium` if necessary, or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium` to use an installed Chromium.
+- `npm run test:unit`: Vitest/React Testing Library guest error/confirmation paths.
+- `npm run test:email`: signature/replay/template/image-validation tests with controlled inputs.
+- `npm run test:administration`: persisted CMS CRUD, private preview/publish and team roles.
+- `npm run test:operations`: media/moderation/QR/check-in/seating and notification integration.
+- `npm run test:release`: SEO, security headers, client-secret exclusion and atomic bulk publication.
+- `npm run test:all`: application checks and every local acceptance suite sequentially.
+- `npm run verify:release`: secret-safe production configuration inspection; exits nonzero on missing setup. It does not deploy, send email or charge a payment.
 - `npm run test:payments`: controlled payment/signature/transport tests; does not contact Paystack.
 - `npm run verify:paystack`: explicit sandbox-only verification against a configured real Paystack account and public webhook; see manual-resolution.md first.
 - `npm run test:invitations`: Phase 4 CSV/RSVP/rate-limit/delivery tests against local Supabase and a production server; real sending is disabled in this test process.
@@ -55,7 +64,7 @@ Never commit `.env.local`, paste secrets into reports, or prefix private credent
 
 ## Supabase workflow
 
-Configuration is tracked in `supabase/config.toml`. Run `npx supabase migration new <name>` to create an ordered migration. Migrations 001–006 implement the schema, security, transactional routines, storage, indexes, and extended invariants. See [database notes](docs/database.md).
+Configuration is tracked in `supabase/config.toml`. Run `npx supabase migration new <name>` to create an ordered migration. Migrations 001–015 implement the schema, security, transactional routines, storage, invitations, inventory, draft publication, advanced operations and release hardening. See [database notes](docs/database.md).
 
 - `npm run db:reset` recreates the **local** database and applies migrations/seed. This destroys local development records; do not use it against production.
 - `npm run db:lint` checks the running local database.
@@ -72,11 +81,19 @@ For hosted development, link explicitly using `npx supabase link --project-ref <
 
 - `src/app/(public)`: shared public layout and platform entry page.
 - `src/app/(auth)`: sign-in and server authentication actions.
-- `src/app/admin`: protected administration layout and empty workspace shell.
+- `src/app/admin`: protected tenant workspace, visual CMS, reports and wedding operations.
 - `src/components/ui`: Shadcn-compatible controls with Radix composition.
 - `src/lib/supabase`: browser/server Supabase clients.
 - `src/proxy.ts`: cookie refresh and anonymous admin redirect.
 - `supabase`: CLI configuration and migration workflow.
-- `tests/e2e`: foundational browser acceptance checks.
+- `tests/e2e`: desktop/mobile foundation, authentication, CMS publication, RSVP, reservations, moderation and gallery interaction checks.
 
-See [architecture decisions](docs/architecture.md). Browser QA is deferred under the user’s instruction; see [manual-resolution notes](docs/manual-resolution.md). This is not yet a wedding website release or production deployment.
+See [architecture decisions](docs/architecture.md). See [manual-resolution notes](docs/manual-resolution.md) for outstanding account/device/deployment checks. Local passing tests do not establish a production deployment.
+
+## Publication and communication
+
+Website identity/content/theme edits are saved as drafts. Use the private preview before publishing. Content records have independent draft and publication actions, including atomic bulk publication; public rendering never inherits member permissions. Media bytes remain private until explicitly published, and albums/photographs have separate visibility controls.
+
+The worker endpoint is `/api/cron/notifications`; it requires `Authorization: Bearer <CRON_SECRET>`. `vercel.json` proposes a five-minute schedule; activate it only after the intended production environment and provider setup are verified. The communication dashboard shows queue status separately from verified delivery status. See the production runbook for leases, retries, exhausted jobs, suppression and recovery.
+
+The production dependency audit is clean. A targeted minimatch override for the TypeScript ESLint parser avoids a development-only denial-of-service advisory without downgrading the Next.js lint configuration. Lint/typecheck and the complete audit validate the override.

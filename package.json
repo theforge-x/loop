@@ -25,7 +25,11 @@
     "verify:paystack": "node --experimental-strip-types --env-file=.env.local scripts/verify-paystack.mjs",
     "test:administration": "node --env-file=.env.local --test tests/workflows/administration.test.mjs",
     "test:operations": "node --experimental-strip-types --env-file=.env.local --test tests/workflows/operations.test.mjs",
-    "test:email": "node --experimental-strip-types --test tests/email/*.test.mjs"
+    "test:email": "node --experimental-strip-types --test tests/email/*.test.mjs",
+    "test:unit": "vitest run",
+    "test:release": "node --env-file=.env.local --test tests/workflows/release.test.mjs",
+    "verify:release": "node --env-file-if-exists=.env.local scripts/verify-release.mjs",
+    "test:all": "npm run check && npm run test:unit && npm run test:payments && npm run test:email && npm run test:database && npm run test:public && npm run test:invitations && npm run test:administration && npm run test:operations && npm run test:release && npm run test:e2e"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -47,11 +51,13 @@
     "zod": "^4.6.7"
   },
   "engines": {
-    "node": ">=22.12.0"
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
     "@tailwindcss/postcss": "^4.3.4",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
     "@types/json-bigint": "^1.0.4",
     "@types/node": "^26.6.6",
     "@types/qrcode": "^1.5.6",
@@ -59,8 +65,15 @@
     "@types/react-dom": "^19.3.0",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.4.5",
+    "jsdom": "^31.0.0",
     "supabase": "^3.0.0",
     "tailwindcss": "^4.3.4",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^5.1.0"
+  },
+  "overrides": {
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "^11.0.1"
+    }
   }
 }
