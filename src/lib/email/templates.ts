@@ -1,0 +1,4 @@
+function escape(value: string) { return value.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!); }
+export function emailTemplate(names: string, text: string) {
+ return `<!doctype html><html><body style="margin:0;background:#faf7f1;color:#303b32;font-family:Georgia,serif"><table role="presentation" style="width:100%;padding:24px"><tr><td align="center"><table role="presentation" style="width:100%;max-width:600px;background:#ffffff;border-radius:16px"><tr><td style="padding:32px"><p style="font-size:12px;letter-spacing:2px">A NOTE FROM</p><h1 style="font-size:32px;line-height:1.2">${escape(names)}</h1><p style="line-height:1.8;white-space:pre-line;overflow-wrap:anywhere">${escape(text)}</p><hr style="border:0;border-top:1px solid #eee;margin:32px 0"><p style="font-size:12px">Sent with Loop · Please keep personal invitation links private.</p></td></tr></table></td></tr></table></body></html>`;
+}

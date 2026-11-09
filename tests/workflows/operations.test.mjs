@@ -1,0 +1,84 @@
+import {before,after,describe,test} from 'node:test';
+import assert from 'node:assert/strict';
+import {spawn} from 'node:child_process';
+import {randomUUID,randomBytes,createHmac} from 'node:crypto';
+import {createServerClient} from '@supabase/ssr';
+import {createFixture,must} from '../../scripts/database/fixtures.mjs';
+const origin='http://127.0.0.1:3103';
+const cronSecret=randomBytes(32).toString('hex');const webhookSecret='whsec_'+randomBytes(32).toString('base64');
+async function cookiesFor(account){const jar=new Map();const c=createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,{cookies:{getAll:()=>[...jar].map(([name,value])=>({name,value})),setAll:values=>values.forEach(({name,value})=>jar.set(name,value))}});must(await c.auth.signInWithPassword({email:account.email,password:account.password}));return{Cookie:[...jar].map(([k,v])=>`${k}=${v}`).join('; ')};}
+describe('Phase 7 advanced operations acceptance',{timeout:240000},()=>{
+ let f,server,headers;let logs='';
+ before(async()=>{f=await createFixture('operations');headers=await cookiesFor(f.accounts.ownerA);server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','--port','3103'],{env:{...process.env,CRON_SECRET:cronSecret,RESEND_WEBHOOK_SECRET:webhookSecret,RESEND_API_KEY:'',RESEND_FROM_EMAIL:''},stdio:['ignore','pipe','pipe']});for(const stream of [server.stdout,server.stderr])stream.on('data',b=>logs=(logs+b).slice(-16000));for(let i=0;i<100;i++){try{if((await fetch(origin,{signal:AbortSignal.timeout(1000)})).ok)return;}catch{}await new Promise(r=>setTimeout(r,300));}throw new Error(logs);});
+ after(()=>server?.kill('SIGTERM'));
+ test('guestbook rejects cross-origin/spam/oversize, persists pending messages and publishes only approved messages',async()=>{
+  const post=(value,slug=`${f.tag}-a`,extra={})=>fetch(`${origin}/api/weddings/${slug}/guestbook`,{method:'POST',headers:{'Content-Type':'application/json',...extra},body:JSON.stringify(value)});
+  assert.equal((await post({name:'Guest',message:'Blocked' },undefined,{Origin:'https://evil.test'})).status,403);
+  assert.equal((await post({name:'',message:'Invalid'})).status,400);
+  assert.equal((await post({name:'Guest',message:'x'.repeat(17000)})).status,400);
+  const body={name:'Operations guest',message:`Private pending wishes ${randomUUID()}`};assert.equal((await post(body)).status,200);
+  const row=must(await f.service.from('guestbook_messages').select('*').eq('wedding_id',f.weddingA).eq('message',body.message).single());assert.equal(row.moderation_status,'pending');
+  assert.equal(must(await f.anon.from('guestbook_messages').select('id').eq('id',row.id)).length,0);
+  assert.equal(must(await f.accounts.ownerB.client.from('guestbook_messages').update({moderation_status:'approved'}).eq('id',row.id).select('id')).length,0);
+  must(await f.accounts.coordinator.client.from('guestbook_messages').update({moderation_status:'approved',moderated_by:f.accounts.coordinator.id,moderated_at:new Date().toISOString()}).eq('id',row.id));
+  assert.equal(must(await f.anon.from('guestbook_messages').select('id').eq('id',row.id)).length,1);
+  const honey={name:'Robot',message:'Never persist',website:'https://spam.test'};assert.equal((await post(honey)).status,200);assert.equal(must(await f.service.from('guestbook_messages').select('id').eq('wedding_id',f.weddingA).eq('name','Robot')).length,0);
+  assert.equal((await post(body)).status,200);assert.equal((await post(body)).status,429);
+ });
+ test('uploads validate bytes, tenant and role; private storage publication and gallery visibility are independent',async()=>{
+  const album=must(await f.accounts.ownerA.client.from('gallery_albums').insert({wedding_id:f.weddingA,title:'Upload album',is_published:true}).select().single());
+  const upload=(bytes,type='image/png',albumId=album.id,auth=headers)=>{const data=new FormData();data.set('file',new Blob([bytes],{type}),'photo.png');data.set('album_id',albumId);data.set('alt_text','Uploaded photograph');return fetch(`${origin}/api/admin/${f.weddingA}/media`,{method:'POST',headers:auth,body:data});};
+  assert.equal((await upload(Buffer.from('<svg onload="alert(1)"></svg>'))).status,400);
+  const bytes=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nGQAAAAASUVORK5CYII=','base64');
+  assert.equal((await upload(bytes,'image/png',randomUUID())).status,400);
+  const forbidden=await upload(bytes,'image/png',album.id,await cookiesFor(f.accounts.viewer));assert.equal(forbidden.status,403);
+  const response=await upload(bytes);assert.equal(response.status,200,await response.clone().text());const {path}=await response.json();
+  const asset=must(await f.service.from('media_assets').select('*').eq('object_path',path).single());assert.equal(asset.is_published,false);assert.equal((await f.anon.storage.from('wedding-media').download(path)).data,null);
+  must(await f.accounts.ownerA.client.from('media_assets').update({is_published:true}).eq('id',asset.id));assert.ok(must(await f.anon.storage.from('wedding-media').download(path)).size>0);
+  const photo=must(await f.service.from('gallery_images').select('id').eq('image_path',path).single());assert.equal(must(await f.anon.from('gallery_images').select('id').eq('id',photo.id)).length,0);
+  must(await f.accounts.coordinator.client.from('gallery_images').update({is_published:true}).eq('id',photo.id));assert.equal(must(await f.anon.from('gallery_images').select('id').eq('id',photo.id)).length,1);
+  assert.ok(must(await f.accounts.ownerB.client.storage.from('wedding-media').download(path)).size>0,'Published assets are public');
+ });
+ test('QR lookup rejects invalid, expired, revoked, cross-tenant and viewer access; check-in is concurrent-safe and seating capacity cannot be exceeded',async()=>{
+  must(await f.accounts.ownerA.client.rpc('record_rsvp',{p_wedding_id:f.weddingA,p_group_id:f.groupA.id,p_status:'attending',p_attendees:[{name:'Confirmed one'},{name:'Confirmed two'}],p_event_ids:[f.eventA.id]}));
+  const lookup={p_wedding_id:f.weddingA,p_token:f.token};const result=must(await f.accounts.coordinator.client.rpc('lookup_checkin',lookup));assert.equal(result.attendees.length,2);
+  for(const client of [f.anon,f.accounts.viewer.client,f.accounts.ownerB.client])assert.ok((await client.rpc('lookup_checkin',lookup)).error);
+  assert.ok((await f.accounts.coordinator.client.rpc('lookup_checkin',{...lookup,p_token:'x'.repeat(64)})).error);
+  const attendee=result.attendees[0];const attempts=await Promise.all(Array.from({length:8},()=>f.accounts.coordinator.client.rpc('check_in_attendee',{p_wedding_id:f.weddingA,p_event_id:f.eventA.id,p_attendee_id:attendee.id})));assert.equal(new Set(attempts.map(r=>must(r))).size,1);
+  const table=must(await f.accounts.coordinator.client.from('seating_tables').insert({wedding_id:f.weddingA,name:'One seat',capacity:1}).select().single());
+  const seats=await Promise.all(result.attendees.map(a=>f.accounts.coordinator.client.rpc('assign_seat',{p_wedding_id:f.weddingA,p_table_id:table.id,p_attendee_id:a.id})));assert.equal(seats.filter(r=>!r.error).length,1);assert.equal(seats.filter(r=>r.error).length,1);
+  must(await f.accounts.ownerA.client.rpc('revoke_invitation',{p_wedding_id:f.weddingA,p_group_id:f.groupA.id}));assert.ok((await f.accounts.coordinator.client.rpc('lookup_checkin',lookup)).error);
+  const token=must(await f.accounts.ownerA.client.rpc('issue_invitation',{p_wedding_id:f.weddingA,p_group_id:f.groupA.id,p_expires_at:new Date(Date.now()+60000).toISOString()}));must(await f.service.from('invitation_groups').update({token_expires_at:new Date(Date.now()-60000).toISOString()}).eq('id',f.groupA.id));assert.ok((await f.accounts.coordinator.client.rpc('lookup_checkin',{...lookup,p_token:token})).error);
+  const exported=await fetch(`${origin}/admin/${f.weddingA}/operations/export`,{headers});assert.equal(exported.status,200);assert.ok((await exported.text()).includes('Confirmed one'));
+ });
+ test('communication queues are tenant-scoped, eligible, scheduled and deduplicated; leases are atomic and retryable',async()=>{
+  must(await f.service.from('invitation_groups').update({contact_email:`${f.tag}@example.test`}).eq('id',f.groupA.id));
+  const announcement=must(await f.accounts.coordinator.client.from('announcements').insert({wedding_id:f.weddingA,title:'Queued news',content:'A message',is_published:true}).select().single());
+  const args={p_wedding_id:f.weddingA,p_kind:'announcement',p_record_id:announcement.id,p_groups:[f.groupA.id]};
+  assert.equal(must(await f.accounts.coordinator.client.rpc('queue_communication',args)),1);assert.equal(must(await f.accounts.coordinator.client.rpc('queue_communication',args)),0);
+  assert.ok((await f.accounts.viewer.client.rpc('queue_communication',args)).error);assert.ok((await f.accounts.ownerB.client.rpc('queue_communication',args)).error);
+  assert.ok((await f.accounts.coordinator.client.rpc('queue_communication',{...args,p_kind:'event_reminder',p_record_id:f.privateEvent.id})).error);
+  const job=must(await f.service.from('notifications').select('*').eq('wedding_id',f.weddingA).eq('notification_type','announcement').single());
+  const claims=await Promise.all(Array.from({length:8},()=>f.service.rpc('claim_notification',{p_id:job.id})));assert.equal(claims.flatMap(r=>must(r)).length,1);
+  assert.ok((await f.accounts.ownerA.client.rpc('claim_notification',{p_id:job.id})).error);
+  must(await f.service.from('notifications').update({lease_expires_at:new Date(Date.now()-1000).toISOString()}).eq('id',job.id));assert.equal(must(await f.service.rpc('claim_notification',{p_id:job.id}))[0].attempts,2);
+  must(await f.service.from('notifications').update({status:'failed',next_attempt_at:new Date(Date.now()+60000).toISOString(),lease_token:null,lease_expires_at:null}).eq('id',job.id));assert.equal(must(await f.service.rpc('claim_notification',{p_id:job.id})).length,0);assert.equal(must(await f.service.rpc('claim_notification',{p_id:job.id,p_force:true})).length,1);
+  must(await f.service.from('notifications').update({status:'failed',attempts:8}).eq('id',job.id));assert.equal(must(await f.service.rpc('claim_notification',{p_id:job.id,p_force:true})).length,0);
+ });
+ test('worker requires its secret, logs genuine missing-provider failures and signed delivery events deduplicate and suppress bounced recipients',async()=>{
+  assert.equal((await fetch(`${origin}/api/cron/notifications?wedding_id=${f.weddingA}`)).status,401);
+  const job=must(await f.service.from('notifications').insert({wedding_id:f.weddingA,notification_type:'rsvp_confirmation',recipient_email:`retry-${f.tag}@example.test`,payload:{status:'attending'}}).select().single());
+  const worker=await fetch(`${origin}/api/cron/notifications?wedding_id=${f.weddingA}`,{headers:{Authorization:`Bearer ${cronSecret}`}});assert.equal(worker.status,200,await worker.clone().text());
+  const saved=must(await f.service.from('notifications').select('*').eq('id',job.id).single());assert.equal(saved.status,'failed');assert.match(saved.last_error,/not configured/);assert.equal(saved.attempts,1);assert.equal(saved.lease_token,null);
+  const provider='provider-'+randomUUID();must(await f.service.from('notifications').update({status:'sent',provider_message_id:provider}).eq('id',job.id));
+  const event={type:'email.bounced',created_at:new Date().toISOString(),data:{email_id:provider}};const raw=JSON.stringify(event);const id='event-'+randomUUID();const timestamp=String(Math.floor(Date.now()/1000));const signature=createHmac('sha256',Buffer.from(webhookSecret.slice(6),'base64')).update(`${id}.${timestamp}.${raw}`).digest('base64');
+  const post=(body=raw,sign=signature)=>fetch(`${origin}/api/email/resend/webhook`,{method:'POST',headers:{'Content-Type':'application/json','svix-id':id,'svix-timestamp':timestamp,'svix-signature':`v1,${sign}`},body});
+  assert.equal((await post(raw+' ')).status,401);assert.equal((await post()).status,200);assert.equal((await post()).status,200);
+  assert.equal(must(await f.service.from('email_webhook_events').select('id').eq('id',id)).length,1);assert.equal(must(await f.service.from('notifications').select('delivery_status').eq('id',job.id).single()).delivery_status,'bounced');
+  assert.equal(must(await f.service.from('email_suppressions').select('email').eq('wedding_id',f.weddingA).eq('email',job.recipient_email)).length,1);
+  assert.ok((await f.accounts.ownerA.client.rpc('apply_email_event',{p_event_id:'forged',p_provider_id:provider,p_event_type:'email.delivered',p_occurred_at:new Date().toISOString()})).error);
+  const suppressed=must(await f.service.from('notifications').insert({wedding_id:f.weddingA,notification_type:'rsvp_confirmation',recipient_email:job.recipient_email,payload:{status:'attending'}}).select().single());
+  assert.equal((await fetch(`${origin}/api/cron/notifications?wedding_id=${f.weddingA}`,{headers:{Authorization:`Bearer ${cronSecret}`}})).status,200);assert.equal(must(await f.service.from('notifications').select('status').eq('id',suppressed.id).single()).status,'suppressed');
+ });
+ test('advanced administration pages render and exclude other tenants',async()=>{for(const path of ['media','communication','check-in']){const r=await fetch(`${origin}/admin/${f.weddingA}/${path}`,{headers});assert.equal(r.status,200,path);assert.ok(!(await r.text()).includes('Something went wrong'));}});
+});

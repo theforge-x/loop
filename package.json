@@ -23,7 +23,9 @@
     "test:invitations": "node --experimental-strip-types --env-file=.env.local --test tests/workflows/invitations.test.mjs",
     "test:payments": "node --experimental-strip-types --test tests/payments/*.test.mjs",
     "verify:paystack": "node --experimental-strip-types --env-file=.env.local scripts/verify-paystack.mjs",
-    "test:administration": "node --env-file=.env.local --test tests/workflows/administration.test.mjs"
+    "test:administration": "node --env-file=.env.local --test tests/workflows/administration.test.mjs",
+    "test:operations": "node --experimental-strip-types --env-file=.env.local --test tests/workflows/operations.test.mjs",
+    "test:email": "node --experimental-strip-types --test tests/email/*.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

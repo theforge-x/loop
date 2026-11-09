@@ -147,6 +147,52 @@ isOneToOne: false
       referencedColumns: ["wedding_id","id"]
     }
                   ]
+                },"email_suppressions": {
+                  Row: {
+                    "created_at": string,"email": string,"reason": string,"wedding_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"email": string,"reason": string,"wedding_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"email"?: string,"reason"?: string,"wedding_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "email_suppressions_wedding_id_fkey"
+      columns: ["wedding_id"]
+isOneToOne: false
+      referencedRelation: "weddings"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"email_webhook_events": {
+                  Row: {
+                    "created_at": string,"event_type": string,"id": string,"notification_id": string,"occurred_at": string,"wedding_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"event_type": string,"id": string,"notification_id": string,"occurred_at": string,"wedding_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"event_type"?: string,"id"?: string,"notification_id"?: string,"occurred_at"?: string,"wedding_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "email_webhook_events_notification_id_fkey"
+      columns: ["notification_id"]
+isOneToOne: false
+      referencedRelation: "notifications"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "email_webhook_events_wedding_id_fkey"
+      columns: ["wedding_id"]
+isOneToOne: false
+      referencedRelation: "weddings"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"event_attendance": {
                   Row: {
                     "attendee_id": string,"created_at": string,"event_id": string,"id": string,"rsvp_id": string,"updated_at": string,"wedding_id": string
@@ -417,14 +463,14 @@ isOneToOne: false
                   ]
                 },"notifications": {
                   Row: {
-                    "attempts": number,"created_at": string,"deduplication_key": string | null,"id": string,"last_error": string | null,"next_attempt_at": string,"notification_type": string,"payload": NonNullable<Json>,"provider_message_id": string | null,"recipient_email": string,"sent_at": string | null,"status": string,"updated_at": string,"wedding_id": string
+                    "attempts": number,"created_at": string,"deduplication_key": string | null,"delivery_status": string,"delivery_updated_at": string | null,"id": string,"last_error": string | null,"lease_expires_at": string | null,"lease_token": string | null,"next_attempt_at": string,"notification_type": string,"payload": NonNullable<Json>,"provider_message_id": string | null,"recipient_email": string,"sent_at": string | null,"status": string,"updated_at": string,"wedding_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "attempts"?: number,"created_at"?: string,"deduplication_key"?: string | null,"id"?: string,"last_error"?: string | null,"next_attempt_at"?: string,"notification_type": string,"payload"?: NonNullable<Json>,"provider_message_id"?: string | null,"recipient_email": string,"sent_at"?: string | null,"status"?: string,"updated_at"?: string,"wedding_id": string
+                    "attempts"?: number,"created_at"?: string,"deduplication_key"?: string | null,"delivery_status"?: string,"delivery_updated_at"?: string | null,"id"?: string,"last_error"?: string | null,"lease_expires_at"?: string | null,"lease_token"?: string | null,"next_attempt_at"?: string,"notification_type": string,"payload"?: NonNullable<Json>,"provider_message_id"?: string | null,"recipient_email": string,"sent_at"?: string | null,"status"?: string,"updated_at"?: string,"wedding_id": string
                   }
                   Update: {
-                    "attempts"?: number,"created_at"?: string,"deduplication_key"?: string | null,"id"?: string,"last_error"?: string | null,"next_attempt_at"?: string,"notification_type"?: string,"payload"?: NonNullable<Json>,"provider_message_id"?: string | null,"recipient_email"?: string,"sent_at"?: string | null,"status"?: string,"updated_at"?: string,"wedding_id"?: string
+                    "attempts"?: number,"created_at"?: string,"deduplication_key"?: string | null,"delivery_status"?: string,"delivery_updated_at"?: string | null,"id"?: string,"last_error"?: string | null,"lease_expires_at"?: string | null,"lease_token"?: string | null,"next_attempt_at"?: string,"notification_type"?: string,"payload"?: NonNullable<Json>,"provider_message_id"?: string | null,"recipient_email"?: string,"sent_at"?: string | null,"status"?: string,"updated_at"?: string,"wedding_id"?: string
                   }
                   Relationships: [
                     {
@@ -743,7 +789,10 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "apply_verified_payment":
+            "apply_email_event":
+{ Args: { "p_event_id": string,"p_event_type": string,"p_occurred_at": string,"p_provider_id": string }; Returns: boolean
+                           },
+"apply_verified_payment":
 { Args: { "p_amount_minor": number,"p_currency": string,"p_event_id": string,"p_reference": string,"p_transaction_id": string }; Returns: boolean
                            },
 "assign_seat":
@@ -755,6 +804,33 @@ isOneToOne: false
 "check_in_attendee":
 { Args: { "p_attendee_id": string,"p_event_id": string,"p_wedding_id": string }; Returns: string
                            },
+"claim_notification":
+{ Args: { "p_force"?: boolean,"p_id": string }; Returns: {
+              "attempts": number,
+"created_at": string,
+"deduplication_key": string | null,
+"delivery_status": string,
+"delivery_updated_at": string | null,
+"id": string,
+"last_error": string | null,
+"lease_expires_at": string | null,
+"lease_token": string | null,
+"next_attempt_at": string,
+"notification_type": string,
+"payload": NonNullable<Json>,
+"provider_message_id": string | null,
+"recipient_email": string,
+"sent_at": string | null,
+"status": string,
+"updated_at": string,
+"wedding_id": string
+            }[]
+                          SetofOptions: {
+        from: "*"
+        to: "notifications"
+        isOneToOne: false
+        isSetofReturn: true
+      } },
 "consume_rate_limit":
 { Args: { "p_key_hash": string,"p_limit": number,"p_window_seconds": number }; Returns: boolean
                            },
@@ -784,11 +860,20 @@ isOneToOne: false
 "issue_invitation":
 { Args: { "p_expires_at": string,"p_group_id": string,"p_wedding_id": string }; Returns: string
                            },
+"lookup_checkin":
+{ Args: { "p_token": string,"p_wedding_id": string }; Returns: Json
+                           },
+"prune_request_limits":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
 "publish_content":
 { Args: { "p_draft_id": string,"p_publish"?: boolean,"p_wedding_id": string }; Returns: string
                            },
 "publish_website":
 { Args: { "p_wedding_id": string }; Returns: undefined
+                           },
+"queue_communication":
+{ Args: { "p_groups": (string)[],"p_kind": string,"p_record_id": string,"p_wedding_id": string }; Returns: number
                            },
 "queue_invitation":
 { Args: { "p_group_id": string,"p_wedding_id": string }; Returns: string

@@ -14,7 +14,7 @@ test("anonymous visitors cannot enter admin", async ({ page }) => {
   await expect(page.getByLabel("Email address")).toBeVisible();
 });
 test("unknown routes offer a way home", async ({ page }) => {
-  const response = await page.goto("/this-page-does-not-exist");
+  const response = await page.goto("/this-page-does-not-exist/unknown/nested-route");
   expect(response?.status()).toBe(404);
   await page.getByRole("link", { name: "Back to Loop" }).click();
   await expect(page).toHaveURL("/");
@@ -25,6 +25,14 @@ test("invalid credentials remain outside the workspace", async ({ page }) => {
   await page.getByLabel("Email address").fill("not-an-account@example.test");
   await page.getByLabel("Password", { exact: true }).fill("incorrect-test-password");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText("We couldn’t sign you in");
+  await expect(page.getByRole("alert").filter({ hasText: "We couldn’t sign you in" })).toBeVisible();
   await expect(page).toHaveURL(/\/sign-in$/);
+});
+
+test("unknown wedding slugs render a private noindex recovery page", async ({ page }) => {
+  await page.goto("/this-wedding-does-not-exist");
+  await expect(page.getByRole("heading", { name: "A little out of the way." })).toBeVisible();
+  await expect(page.locator('meta[name="robots"][content*="noindex"]').first()).toHaveAttribute('content', /noindex/);
+  await page.getByRole("link", { name: "Back to Loop" }).click();
+  await expect(page).toHaveURL("/");
 });

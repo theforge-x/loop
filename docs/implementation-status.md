@@ -79,7 +79,7 @@ Passing evidence: production build/lint/strict TypeScript; four payment logic/tr
 | 4 Invitations/RSVP | Acceptance checks pass; live email/browser QA deferred | Hashed secure tokens, server allowances, group privacy, RSVP/CSV integration |
 | 5 Registry/payments | Implemented; local checks pass; actual Paystack verification pending | Gift CRUD, concurrency, verified signatures/transactions, webhook idempotency |
 | 6 Administration | Local acceptance checks pass | Persisted CRUD, server and RLS roles, preview/publish, real analytics |
-| 7 Advanced operations | Not started | Email retry logs, gallery permissions, moderation, secure unique check-in, seating capacity |
+| 7 Advanced operations | Local acceptance checks pass; live provider/camera checks flagged | Email retry logs, gallery permissions, moderation, secure unique check-in, seating capacity |
 | 8 Production readiness | Not started | Critical suites, tenant isolation, production secrets, deployment and recovery documentation |
 
 ## Committed milestones
@@ -95,3 +95,11 @@ Implemented visual website/identity/theme forms, private preview using the publi
 Evidence: `npm run check` passed lint, strict TypeScript and production build; `npm run db:lint` passed; `npm run test:administration` passed 4 groups covering every CMS content module, create/edit/publish/hide/delete persistence, role/tenant restrictions, private preview, transactional website publication and final-owner retention. Regression suites passed: database 10/10, public HTTP 4/4, invitations/registry 9/9. A focused desktop browser check passed; a full desktop/mobile rerun is underway. Browser interaction coverage for the new forms is added during final QA.
 
 Migrations 011–012 applied locally. Supabase default anonymous grants were explicitly removed from the draft table. Publication does not expose drafts through public `SELECT *` queries. Media uploads, communication scheduling and secure QR lookup are the Phase 7 extensions to the administration shell.
+
+## Phase 7 — Advanced operations — LOCAL ACCEPTANCE CHECKS PASS (2026-11-09)
+
+Implemented authenticated multi-image uploads with byte/MIME/size checks, private media library and independent image/album/photo publication, safe reference-aware deletion, moderated/rate-limited/honeypot guestbook submission, invitation QR camera/manual lookup, server/RLS roles and token revocation/expiry/tenant checks, unique check-in, capacity-serialized seating and CSV reports. Communication supports announcement/event-reminder queues, responsive escaped email templates, atomic delivery leases, expired-lease recovery, exponential retries (8 attempts), delivery-event signatures/replay deduplication, bounce/complaint suppression and an authenticated scheduled worker with rate-limit cleanup.
+
+Evidence: `npm run check` passed; `npm run test:email` 2/2; `npm run test:operations` 6/6; Phase 6 administration 4/4 and invitation/registry regression 9/9 passed. Database lint passed with an explicit local connection using sslmode=disable. Migrations 013–014 applied transactionally through local container psql and recorded in Supabase history after the CLI's implicit connection timed out; generated types match the actual schema.
+
+Real Resend sending/delivery events need account credentials and a reachable verified webhook. Scheduled deployment needs CRON_SECRET and a scheduler. Physical mobile-camera QA needs a compatible HTTPS device. These remain manual gates, not claimed passes. Browser automation launches, but intermittent screenshot/click timeouts on this host still require investigation during Phase 8.
