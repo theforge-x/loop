@@ -8,18 +8,18 @@ Phases 1–7 are implemented with real Supabase-backed public pages, invitations
 
 ## Requirements
 
-- Node.js 22.12+ (Node 24 LTS recommended), npm, and Docker for local Supabase.
+- Node.js matching `package.json` (Node 24 LTS recommended), pnpm 11.24.0, and Docker for local Supabase.
 - A local Supabase stack or your own development Supabase project.
 
 ## Run locally
 
-1. Run `npm ci`.
-2. Start Docker, then run `npm run supabase:start` (first run downloads containers).
-3. Copy `.env.example` to `.env.local`. From `npm run supabase:status`, set `NEXT_PUBLIC_SUPABASE_URL` to the API URL and `NEXT_PUBLIC_SUPABASE_ANON_KEY` to the local anon key. Keep these values local. Alternatively use a development Supabase project's URL and anon key.
-4. Run `npm run verify:connection`. Both Auth settings and the database REST endpoint must pass.
-5. Run `npm run dev` and open http://localhost:3000.
+1. Run `pnpm install --frozen-lockfile`.
+2. Start Docker, then run `pnpm supabase:start` (first run downloads containers).
+3. Copy `.env.example` to `.env.local`. From `pnpm supabase:status`, set `NEXT_PUBLIC_SUPABASE_URL` to the API URL and `NEXT_PUBLIC_SUPABASE_ANON_KEY` to the local anon key. Keep these values local. Alternatively use a development Supabase project's URL and anon key.
+4. Run `pnpm verify:connection`. Both Auth settings and the database REST endpoint must pass.
+5. Run `pnpm dev` and open http://localhost:3000.
 
-Apply the database using `npx --no-install supabase migration up --local`, then run `npm run db:seed` for local-only development fixtures. That command uses real Supabase Auth accounts and stores generated credentials in ignored `.local-dev-accounts.json` (mode 0600). It refuses non-local API hosts. Fixtures are never loaded by the production application. Authenticated members can open the overview, website/theme editor, content modules, guests, registry, media, communication, moderation, seating/check-in, payments and team controls. New users can register at `/sign-up` and create their first private wedding at `/admin/new`; existing users can create additional weddings from `/admin`.
+Apply the database using `pnpm exec supabase migration up --local`, then run `pnpm db:seed` for local-only development fixtures. That command uses real Supabase Auth accounts and stores generated credentials in ignored `.local-dev-accounts.json` (mode 0600). It refuses non-local API hosts. Fixtures are never loaded by the production application. Authenticated members can open the overview, website/theme editor, content modules, guests, registry, media, communication, moderation, seating/check-in, payments and team controls. New users can register at `/sign-up` and create their first private wedding at `/admin/new`; existing users can create additional weddings from `/admin`.
 
 ## Environment
 
@@ -45,37 +45,37 @@ Never commit `.env.local`, paste secrets into reports, or prefix private credent
 
 ## Checks
 
-- `npm run lint`: ESLint with zero warnings allowed.
-- `npm run typecheck`: strict TypeScript.
-- `npm run build`: production compilation and route generation.
-- `npm run test:e2e`: production-server browser checks on desktop and mobile. Build first and configure Supabase. Install Chromium using `npx playwright install chromium` if necessary, or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium` to use an installed Chromium.
-- `npm run test:unit`: Vitest/React Testing Library guest error/confirmation paths.
-- `npm run test:email`: signature/replay/template/image-validation tests with controlled inputs.
-- `npm run test:administration`: persisted CMS CRUD, private preview/publish and team roles.
-- `npm run test:operations`: media/moderation/QR/check-in/seating and notification integration.
-- `npm run test:release`: SEO, security headers, client-secret exclusion and atomic bulk publication.
-- `npm run test:all`: application checks and every local acceptance suite sequentially.
-- `npm run verify:release`: secret-safe production configuration inspection; exits nonzero on missing setup. It does not deploy, send email or charge a payment.
-- `npm run test:payments`: controlled payment/signature/transport tests; does not contact Paystack.
-- `npm run verify:paystack`: explicit sandbox-only verification against a configured real Paystack account and public webhook; see manual-resolution.md first.
-- `npm run test:invitations`: Phase 4 CSV/RSVP/rate-limit/delivery tests against local Supabase and a production server; real sending is disabled in this test process.
-- `npm run test:public`: production HTTP acceptance checks using real local Supabase (build first).
-- `npm run verify:connection`: real Auth and database API connectivity.
+- `pnpm lint`: ESLint with zero warnings allowed.
+- `pnpm typecheck`: strict TypeScript.
+- `pnpm build`: production compilation and route generation.
+- `pnpm test:e2e`: production-server browser checks on desktop and mobile. Build first and configure Supabase. Install Chromium using `pnpm exec playwright install chromium` if necessary, or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium` to use an installed Chromium.
+- `pnpm test:unit`: Vitest/React Testing Library guest error/confirmation paths.
+- `pnpm test:email`: signature/replay/template/image-validation tests with controlled inputs.
+- `pnpm test:administration`: persisted CMS CRUD, private preview/publish and team roles.
+- `pnpm test:operations`: media/moderation/QR/check-in/seating and notification integration.
+- `pnpm test:release`: SEO, security headers, client-secret exclusion and atomic bulk publication.
+- `pnpm test:all`: application checks and every local acceptance suite sequentially.
+- `pnpm verify:release`: secret-safe production configuration inspection; exits nonzero on missing setup. It does not deploy, send email or charge a payment.
+- `pnpm test:payments`: controlled payment/signature/transport tests; does not contact Paystack.
+- `pnpm verify:paystack`: explicit sandbox-only verification against a configured real Paystack account and public webhook; see manual-resolution.md first.
+- `pnpm test:invitations`: Phase 4 CSV/RSVP/rate-limit/delivery tests against local Supabase and a production server; real sending is disabled in this test process.
+- `pnpm test:public`: production HTTP acceptance checks using real local Supabase (build first).
+- `pnpm verify:connection`: real Auth and database API connectivity.
 
 ## Supabase workflow
 
-Configuration is tracked in `supabase/config.toml`. Run `npx supabase migration new <name>` to create an ordered migration. Migrations 001–015 implement the schema, security, transactional routines, storage, invitations, inventory, draft publication, advanced operations and release hardening. See [database notes](docs/database.md).
+Configuration is tracked in `supabase/config.toml`. Run `pnpm exec supabase migration new <name>` to create an ordered migration. Migrations 001–015 implement the schema, security, transactional routines, storage, invitations, inventory, draft publication, advanced operations and release hardening. See [database notes](docs/database.md).
 
-- `npm run db:reset` recreates the **local** database and applies migrations/seed. This destroys local development records; do not use it against production.
-- `npm run db:lint` checks the running local database.
-- `npm run db:types` generates TypeScript definitions from the local schema, replacing the file only after successful generation. Browser/server/proxy clients use these generated types.
-- `npm run supabase:stop` stops this project's containers while retaining local data.
+- `pnpm db:reset` recreates the **local** database and applies migrations/seed. This destroys local development records; do not use it against production.
+- `pnpm db:lint` checks the running local database.
+- `pnpm db:types` generates TypeScript definitions from the local schema, replacing the file only after successful generation. Browser/server/proxy clients use these generated types.
+- `pnpm supabase:stop` stops this project's containers while retaining local data.
 
-For hosted development, link explicitly using `npx supabase link --project-ref <development-project-ref>`. Review migrations with `npx supabase db push --dry-run` before `npx supabase db push`. Do not link or push to production during foundational development. Generated types and reviewed migration SQL belong in source control; credentials do not.
+For hosted development, link explicitly using `pnpm exec supabase link --project-ref <development-project-ref>`. Review migrations with `pnpm exec supabase db push --dry-run` before `pnpm exec supabase db push`. Do not link or push to production during foundational development. Generated types and reviewed migration SQL belong in source control; credentials do not.
 
 ## Database validation
 
-`npm run test:database` runs real Supabase integration checks and requires Docker plus the complete local database/Auth/REST/Storage stack. It creates uniquely named local test accounts/workspaces and retains them until a deliberate local database reset. It refuses non-local API hosts. Do not point it at production. `npm run db:seed` creates separate development accounts with generated local credentials. No shared test password is committed.
+`pnpm test:database` runs real Supabase integration checks and requires Docker plus the complete local database/Auth/REST/Storage stack. It creates uniquely named local test accounts/workspaces and retains them until a deliberate local database reset. It refuses non-local API hosts. Do not point it at production. `pnpm db:seed` creates separate development accounts with generated local credentials. No shared test password is committed.
 
 ## Structure
 
@@ -104,4 +104,4 @@ Open `/sign-up`, enter an email and a password of at least 12 characters, then c
 
 Local Supabase has email confirmation disabled by default, so registration signs in immediately. Hosted Supabase should enable email/password signup and confirmation with a configured Auth email sender. Set Auth Site URL to NEXT_PUBLIC_APP_URL and allow `<origin>/auth/confirm` in redirect URLs. The default PKCE confirmation link must be opened in the browser that registered. For confirmation across browsers/devices, set the Confirm signup template link to `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email`. The callback accepts both methods, establishes the session and redirects only to wedding setup. Invalid/expired/replayed links show recovery instructions. Auth emails use Supabase Auth mail settings, independently of the app's Resend notification transport. See [Supabase's Next.js Auth tutorial](https://supabase.com/docs/guides/getting-started/tutorials/with-nextjs). Restart local Supabase after changing its redirect configuration.
 
-Run `npx playwright test tests/e2e/onboarding.spec.mjs` after building. For the onboarding suite, set `PLAYWRIGHT_PORT=3106` to use an isolated production server when port 3000 is occupied. If you intentionally want to test the development server already running on port 3000, use `PLAYWRIGHT_REUSE_SERVER=true npx playwright test tests/e2e/onboarding.spec.mjs`. The tests require local Auth confirmation disabled for immediate signup and separately verify real token-hash confirmation/replay rejection.
+Run `pnpm exec playwright test tests/e2e/onboarding.spec.mjs` after building. For the onboarding suite, set `PLAYWRIGHT_PORT=3106` to use an isolated production server when port 3000 is occupied. If you intentionally want to test the development server already running on port 3000, use `PLAYWRIGHT_REUSE_SERVER=true pnpm exec playwright test tests/e2e/onboarding.spec.mjs`. The tests require local Auth confirmation disabled for immediate signup and separately verify real token-hash confirmation/replay rejection.

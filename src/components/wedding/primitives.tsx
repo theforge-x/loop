@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { formatWeddingDate, safeExternalUrl } from "@/lib/wedding/content";
 import type { Wedding, getEvents } from "@/lib/wedding/data";
 export function PageIntro({ wedding, title, description }: { wedding: Wedding; title: string; description?: string }) {
-  return <div className="border-b border-border pb-12"><p className="mb-5 text-xs tracking-[0.22em] uppercase text-muted-foreground">{wedding.partner_one_name} &amp; {wedding.partner_two_name}</p><h1 className="text-5xl tracking-[-0.04em] sm:text-7xl">{title}</h1>{description && <p className="mt-6 max-w-2xl whitespace-pre-line leading-8 text-muted-foreground">{description}</p>}</div>;
+  return <div data-page-intro className="border-b border-border pb-12"><p className="mb-5 text-xs tracking-[0.22em] uppercase text-muted-foreground">{wedding.partner_one_name} &amp; {wedding.partner_two_name}</p><h1 className="text-5xl tracking-[-0.04em] sm:text-7xl">{title}</h1>{description && <p className="mt-6 max-w-2xl whitespace-pre-line leading-8 text-muted-foreground">{description}</p>}</div>;
 }
 export function EmptyContent({ children }: { children: React.ReactNode }) { return <p className="py-14 leading-8 text-muted-foreground">{children}</p>; }
 export function SectionHeading({ title, href, linkText }: { title: string; href?: string; linkText?: string }) {

@@ -8,7 +8,7 @@
     "start": "next start --hostname 0.0.0.0",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "next typegen && tsc --noEmit",
-    "check": "npm run lint && npm run typecheck && npm run build",
+    "check": "pnpm lint && pnpm typecheck && pnpm build",
     "test:e2e": "playwright test",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
@@ -29,7 +29,7 @@
     "test:unit": "vitest run",
     "test:release": "node --env-file=.env.local --test tests/workflows/release.test.mjs",
     "verify:release": "node --env-file-if-exists=.env.local scripts/verify-release.mjs",
-    "test:all": "npm run check && npm run test:unit && npm run test:payments && npm run test:email && npm run test:database && npm run test:public && npm run test:invitations && npm run test:administration && npm run test:operations && npm run test:release && npm run test:e2e"
+    "test:all": "pnpm check && pnpm test:unit && pnpm test:payments && pnpm test:email && pnpm test:database && pnpm test:public && pnpm test:invitations && pnpm test:administration && pnpm test:operations && pnpm test:release && pnpm test:e2e"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -71,9 +71,5 @@
     "typescript": "^6.0.3",
     "vitest": "^5.1.0"
   },
-  "overrides": {
-    "@typescript-eslint/typescript-estree": {
-      "minimatch": "^11.0.1"
-    }
-  }
+  "packageManager": "pnpm@11.24.0"
 }

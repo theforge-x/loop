@@ -1,5 +1,6 @@
 @import "tailwindcss";
 :root {
+  color-scheme: light;
   --background: #faf7f1; --foreground: #303b32;
   --card: #fffdf9; --card-foreground: #303b32;
   --primary: #344b3d; --primary-foreground: #fffdf9;
@@ -31,4 +32,70 @@
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
+@layer base {
+  html { scroll-behavior: smooth; scroll-padding-top: 6rem; }
+  body { line-height: 1.5; }
+  button:not(:disabled), summary, select { cursor: pointer; }
+  :is(button, summary, input, select, textarea):focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+  input, select, textarea { min-width: 0; accent-color: var(--primary); }
+  :target { scroll-margin-top: 6rem; }
+}
+@layer components {
+  .admin-shell :is(h1, h2, h3) { text-wrap: balance; }
+  .admin-shell :is(input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="hidden"]), select, textarea) { max-width: 100%; }
+  .admin-shell table { min-width: 34rem; }
+  .admin-shell th { padding-block: 0.875rem; font-weight: 500; color: var(--muted-foreground); }
+  .admin-shell tbody tr { transition: background-color 150ms; }
+  .admin-shell tbody tr:hover { background: color-mix(in srgb, var(--secondary) 35%, transparent); }
+}
+
+/* Interior pages share a readable content width; the homepage keeps its full-width hero. */
+.wedding-page:has(> [data-page-intro]) { max-width: 80rem; margin-inline: auto; padding: 3rem 1.5rem 0; }
+@media (min-width: 48rem) {
+  .wedding-page:has(> [data-page-intro]) { padding: 5rem 3rem 0; }
+}
+
+.wedding-theme {
+  --background: var(--wedding-background);
+  --foreground: var(--wedding-foreground);
+  --card: var(--wedding-card);
+  --card-foreground: var(--wedding-card-foreground);
+  --primary: var(--wedding-primary);
+  --primary-foreground: var(--wedding-primary-foreground);
+  --secondary: var(--wedding-secondary);
+  --secondary-foreground: var(--wedding-secondary-foreground);
+  --muted: var(--wedding-muted);
+  --muted-foreground: var(--wedding-muted-foreground);
+  --accent: var(--wedding-accent);
+  --accent-foreground: var(--wedding-accent-foreground);
+  --border: var(--wedding-border);
+  --input: var(--wedding-input);
+  --ring: var(--wedding-ring);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #141b17; --foreground: #e7ece4;
+  --card: #1d2720; --card-foreground: #e7ece4;
+  --primary: #b4cfae; --primary-foreground: #172219;
+  --secondary: #2a382e; --secondary-foreground: #e1eadc;
+  --muted: #202c24; --muted-foreground: #adb9a9;
+  --accent: #493b2f; --accent-foreground: #e1b893;
+  --destructive: #ffaaa0; --border: #3a493d; --input: #61745f; --ring: #b4cfae;
+}
+:root[data-theme="dark"] .wedding-theme {
+  color-scheme: dark;
+  --background: color-mix(in srgb, var(--wedding-primary) 8%, #141b17);
+  --foreground: #e7ece4;
+  --card: color-mix(in srgb, var(--wedding-primary) 12%, #1d2720);
+  --card-foreground: #e7ece4;
+  --primary: color-mix(in srgb, var(--wedding-primary) 30%, #d3e8cd);
+  --primary-foreground: #172219;
+  --secondary: #2a382e; --secondary-foreground: #e1eadc;
+  --muted: #202c24; --muted-foreground: #adb9a9;
+  --accent: color-mix(in srgb, var(--wedding-accent) 20%, #352b23);
+  --accent-foreground: color-mix(in srgb, var(--wedding-accent) 20%, #f3ccaa);
+  --border: #3a493d; --input: #61745f; --ring: var(--primary);
 }

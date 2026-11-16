@@ -5,7 +5,7 @@ process.loadEnvFile('.env.local');
 test('new user registers, creates a private wedding and becomes its owner',async({page})=>{
  test.setTimeout(300000);
  const tag=randomUUID().slice(0,8);const email=`signup-${tag}@example.test`;const password=`Demo-${randomUUID()}`;
- await page.goto('/');await page.getByRole('link',{name:'Create your account',exact:true}).click();
+ await page.goto('/');await page.getByRole('link',{name:'Create your wedding',exact:true}).first().click();
  await page.getByLabel('Email address').fill(email);await page.getByLabel('Password',{exact:true}).fill(password);await page.getByLabel('Confirm password').fill('Different-password-123');await page.getByRole('button',{name:'Create account',exact:true}).click();await expect(page.getByRole('alert').filter({hasText:'matching passwords'})).toBeVisible({timeout:60000});
  await page.getByLabel('Confirm password').fill(password);await page.getByRole('button',{name:'Create account',exact:true}).click();await expect(page).toHaveURL(/\/admin\/new$/,{timeout:60000});
  await page.getByLabel('Workspace title').fill('Our new wedding');await page.getByLabel('First partner’s name').fill('Ada');await page.getByLabel('Second partner’s name').fill('Tunde');await page.getByLabel('Wedding URL').fill(`ada-tunde-${tag}`);await page.getByRole('button',{name:'Create wedding',exact:true}).click();await expect(page).toHaveURL(/\/admin\/[0-9a-f-]+\/website$/,{timeout:60000});
