@@ -36,3 +36,22 @@ test("unknown wedding slugs render a private noindex recovery page", async ({ pa
   await page.getByRole("link", { name: "Back to Loop" }).click();
   await expect(page).toHaveURL("/");
 });
+
+test("color mode follows the device, persists an override and stays consistent across navigation", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.goto("/");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  const toggle = page.getByRole("button", { name: "Dark mode", exact: true });
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  const dark = await page.locator("body").evaluate(element => getComputedStyle(element).backgroundColor);
+  await toggle.click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect.poll(() => page.locator("body").evaluate(element => getComputedStyle(element).backgroundColor)).not.toBe(dark);
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.getByRole("link", { name: "Your workspace", exact: true }).click();
+  await expect(page).toHaveURL(/\/sign-in$/);
+  await expect(page.getByRole("button", { name: "Dark mode", exact: true })).toHaveAttribute("aria-pressed", "false");
+  expect(await page.evaluate(() => localStorage.getItem("loop-theme"))).toBe("light");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+});

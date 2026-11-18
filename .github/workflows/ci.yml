@@ -14,28 +14,31 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: npm
-      - run: npm ci
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Start isolated real Supabase
-        run: npx --no-install supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,supavisor,postgres-meta,mailpit
+        run: pnpm exec supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,supavisor,postgres-meta,mailpit
       - run: node scripts/prepare-ci-env.mjs
-      - run: npm run verify:connection
-      - run: npm run db:lint
-      - run: npm run check
-      - run: npm run test:unit
-      - run: npm run test:payments
-      - run: npm run test:email
-      - run: npm run test:database
-      - run: npm run test:public
-      - run: npm run test:invitations
-      - run: npm run test:administration
-      - run: npm run test:operations
-      - run: npm run test:release
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e -- --reporter=github
+      - run: pnpm verify:connection
+      - run: pnpm db:lint
+      - run: pnpm check
+      - run: pnpm test:unit
+      - run: pnpm test:release-tooling
+      - run: pnpm test:hostinger
+      - run: pnpm test:payments
+      - run: pnpm test:email
+      - run: pnpm test:database
+      - run: pnpm test:public
+      - run: pnpm test:invitations
+      - run: pnpm test:administration
+      - run: pnpm test:operations
+      - run: pnpm test:release
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e --reporter=github
       - name: Stop isolated Supabase
         if: always()
-        run: npm run supabase:stop
+        run: pnpm supabase:stop

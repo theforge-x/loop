@@ -1,5 +1,7 @@
 # Deployment and recovery runbook
 
+For the alternative Hostinger Business deployment, follow the [Hostinger deployment guide](hostinger-deployment.md) alongside these shared release and recovery gates. It provides the hosting settings and scheduler that replace the Vercel-specific steps below.
+
 ## Release evidence and pending gates
 
 Use implementation-status.md for the actual test results, and manual-resolution.md for checks requiring account/device access. A local build, configured secret or controlled webhook is not proof of a production deployment. Do not enable monetary contributions until the real Paystack sandbox gate has passed. Live mode also requires its own controlled production verification.
@@ -10,16 +12,128 @@ The Git remote is `git@github.com:theforge-x/loop.git`; changes are committed lo
 
 Use separate Supabase development/staging and production projects, with isolated Vercel environment variables. Follow [Supabase environment management](https://supabase.com/docs/guides/deployment/managing-environments). No hosted project is currently linked by this work. Never run database test/seed/reset scripts against hosted projects; their local-host guards are intentional.
 
+## How to use this runbook
+
+A release has three separate results: the source passes isolated tests, the deployed configuration passes inspection, and an operator verifies the real service. None implies the next. Work through steps 1–8 in order; retain evidence for the same commit and final environment. Recheck affected steps after changing a domain, credential, schema or deployment.
+
+**Automated** means a checked-in command performs repeatable work. **Manual** means an operator selects accounts, reviews changes, completes a provider/device interaction or accepts the result. **Operator-triggered** commands perform external changes and run only after their preceding gate. This repository does not have selected production accounts, hosted credentials or recorded external release evidence; those gates remain open.
+
+### Commands available now
+
+```sh
+# Isolated local environment only: full application and acceptance suites.
+pnpm test:all
+pnpm test:release-tooling
+
+# Production settings supplied privately by the operator or deployment runner.
+# Defaults to live Paystack mode; configuration inspection only, no network.
+pnpm verify:release
+
+# Before live activation: validate matching test keys instead.
+pnpm verify:release --mode test
+
+# Add six anonymous, read-only HTTPS requests against NEXT_PUBLIC_APP_URL.
+pnpm verify:release --smoke
+
+# Save a private, non-overwriting report; optionally add --mode test or --smoke.
+pnpm release:prepare
+```
+
+The commands load `.env.local` if present. Existing process environment variables take precedence; use a clean shell/job with the intended environment to avoid accidentally mixing local and hosted values. Fetching production variables is an operator/secret-manager action, not part of these commands. Do not print or commit the resulting environment.
+
+`release:prepare` writes ignored `.local-release-readiness.json` with file permissions 0600. It records UTC time, local Git commit/dirty status, mode, check results and OPEN manual gates; it never stores environment values or HTTP bodies. The Git revision describes the inspected checkout, **not proof of the deployed revision**. Archive the report privately and use a new ignored path for later runs:
+
+```sh
+pnpm verify:release --smoke --report .local-release-final.json
+```
+
+An existing report is never overwritten. Exit 0 means the requested automated checks passed; exit 1 means a check or report write failed; exit 2 means invalid arguments. Reports always set `productionReady: false`: attach operator sign-off and private evidence references separately. A green configuration result cannot close a manual gate.
+
+The HTTPS checks request `/`, `/sign-in`, `/sign-up`, `/robots.txt`, `/sitemap.xml` and `/admin`, verify expected statuses/types, homepage security headers and the anonymous admin redirect to same-origin `/sign-in`. Each request times out after ten seconds. They send no credentials, follow no redirects and invoke no worker, email, payment or mutation endpoint. A protected preview or redirecting alias will fail; test the accessible canonical origin. This does not inspect DNS records, alternate-domain redirects, wedding metadata, inboxes, database RLS or authenticated workflows.
+
 ## Deployment sequence
 
-1. Select the dedicated production Supabase project and Vercel project/account; record their identifiers privately. Configure Auth site URL and permitted redirects for the final HTTPS origin. Create team Auth accounts through the trusted Supabase workflow. Create the wedding using the authenticated `create_wedding` routine, which establishes its owner. Do not insert public guest accounts or share administrator passwords.
-2. Inventory the production schema and take/verify a recoverable backup before applying changes. Review all migrations 001–015 and `supabase db push --dry-run` against the explicitly linked project. Apply additive migrations using the pinned CLI and capture the migration versions. Do not edit already-applied migrations or reset production. Confirm database lint and hosted RLS/storage checks using controlled records belonging to two tenants.
-3. Set `NEXT_PUBLIC_APP_URL` to the canonical HTTPS origin; set the matching hosted Supabase URL/anon key, private service-role key, timezone, a random RATE_LIMIT_SECRET and CRON_SECRET (each at least 32 characters). Enable TRUST_PROXY_HEADERS only after verifying that the deployed proxy overwrites client forwarding headers. Never use a public prefix on a private key.
-4. Configure Resend sender verification, RESEND_API_KEY, RESEND_FROM_EMAIL and RESEND_WEBHOOK_SECRET; configure Paystack test keys and the reachable Paystack webhook. Use `/api/email/resend/webhook` and `/api/payments/paystack/webhook` respectively. Run the real sandbox verification and inspect receipt/signature/transaction evidence. Switching to live Paystack needs matching sk_live_/pk_live_ keys, provider activation and recorded live-mode verification. Do not put raw card information in application logs or storage.
-5. Connect the repository and deploy a Vercel preview. The committed `vercel.json` uses Next.js and the full application check as its build gate. Configure the five-minute authenticated notification cron only on the intended production environment. Confirm that the account supports the requested schedule and function duration; otherwise use an equivalent authenticated scheduler. Do not attach a second scheduler without reviewing duplicate work. The worker uses atomic leases but external provider acceptance after a timeout can still be ambiguous.
-6. Run `npm run verify:release` with the intended production environment available privately. It reports names of missing/invalid settings, never values, and exits nonzero when configuration is incomplete. It does not deploy, send email or charge money. Presence checks still require real production verification.
-7. Add the custom domain, update DNS as instructed by the hosting account, confirm HTTPS, canonical redirects and canonical URLs, then redeploy with the final origin. Configure error logs, uptime alerts, worker-failure/exhausted-job monitoring and provider webhook-failure alerts. Retain no invitation bodies, raw tokens or payment secrets in diagnostic tooling.
-8. Verify sign-in and sign-out, two-tenant isolation, draft privacy and publication, public navigation/mobile/keyboard behavior, invitation revocation/expiry, RSVP allowance, gift concurrency/cancellation, image upload/private/public access, guestbook moderation, unique QR check-in, seating capacity and report export. Verify real email delivery/events and one controlled financial flow with the operator before enabling contributions. Record timestamps, versions and outcomes without secrets.
+### 1. Select projects and configure authentication
+
+**Why:** credentials, Auth callbacks and data must all belong to the intended environment.
+
+**Manual:** select dedicated production Supabase and Vercel accounts/projects. Record identifiers, responsible operator and final HTTPS origin privately. Keep development/staging isolated. Enable email/password registration and confirmation in Supabase Auth, configure its sender, set Site URL to the final origin and allow `<origin>/auth/confirm`. Use the README token-hash email template for cross-device confirmation. Create trusted team accounts; users register at `/sign-up` and create a wedding at `/admin/new`, where `create_wedding` establishes owner membership. Do not share administrator passwords or create public guest Auth accounts.
+
+**Automated:** isolated CI already tests signup, confirmation/replay handling and owner/private defaults. The readiness command validates URL shape; it cannot inspect dashboard selections or Auth email settings.
+
+**Evidence/stop condition:** record project references privately and verify real confirmation on another browser/device, sign-in/out and owner membership. Stop if the selected accounts or callback origin are uncertain.
+
+### 2. Back up, review and apply the database
+
+**Why:** a deploy can succeed while using an incompatible schema or insecure tenant policies.
+
+**Manual:** inventory the existing schema and migration history, review migrations 001–015 and confirm a recoverable backup, independent Storage object backup and restore rehearsal before changes. Choose recovery targets and retention with the operator. Review the exact dry-run plan and compatibility with both the new and rollback app versions. Never edit an applied migration, reset production or seed hosted fixtures.
+
+**Operator-triggered:** use the CLI installed from the frozen lockfile. Link explicitly, inspect history and produce a plan before applying:
+
+```sh
+pnpm exec supabase link --project-ref <confirmed-production-project-ref>
+pnpm exec supabase migration list --remote
+pnpm exec supabase db push --remote --skip-vault --dry-run
+# Only after the plan and backup have been reviewed:
+pnpm exec supabase db push --remote --skip-vault
+pnpm exec supabase migration list --remote
+pnpm exec supabase db lint --remote --fail-on warning
+```
+
+The link persists locally; confirm the project before every hosted command. Supabase v3 defaults database commands to local, so the explicit `--remote` flag is required. `--skip-vault` limits these pushes to migrations; review Vault changes separately if needed. These commands are deliberately not invoked by `release:prepare`. CI automatically applies migrations and lints an isolated local Supabase database; that result is not hosted verification. See [Supabase environment management](https://supabase.com/docs/guides/deployment/managing-environments).
+
+**Evidence/stop condition:** retain reviewed plan, before/after migration versions, lint outcome, backup/rehearsal reference and controlled hosted RLS/Storage checks for two tenants. Stop on unexpected migrations, failed lint, cross-tenant access or an unverified recovery path.
+
+### 3. Set environment variables and proxy policy
+
+**Manual:** enter values in the correct Vercel environment scopes: canonical `NEXT_PUBLIC_APP_URL`, matching hosted Supabase URL/anon key, server-only service-role key, `NEXT_PUBLIC_DEFAULT_TIMEZONE`, random independent `RATE_LIMIT_SECRET` and `CRON_SECRET` of at least 32 characters. Keep private keys free of a public prefix. Configure provider values in step 4. Leave `TRUST_PROXY_HEADERS=false` until the actual proxy is verified to overwrite client forwarding headers; then explicitly select `true` if appropriate. Redeploy after changes to build-time public variables.
+
+**Automated:** `pnpm verify:release` validates HTTPS origins without paths/credentials, required settings, secret lengths, timezone, explicit proxy boolean, sender format, matching payment modes and suspicious public variable names. It reports check names without values. These are syntax/presence checks, not credential authentication or entropy verification.
+
+**Evidence/stop condition:** attach a readiness report from the intended environment and record secret-manager/version references privately. Confirm that all values belong to the same project and mode; stop on any failed check.
+
+### 4. Verify email and payments
+
+**Manual:** verify the Resend sender domain and configure `RESEND_API_KEY`, `RESEND_FROM_EMAIL` and `RESEND_WEBHOOK_SECRET`. Configure Resend events at `<origin>/api/email/resend/webhook`. Supabase Auth sending is configured separately. Configure Paystack test credentials and `<origin>/api/payments/paystack/webhook`; set current/previous signing secrets according to the application's supported integration/rotation mode. Follow the detailed procedure in manual-resolution.md. Never log raw card data or signing secrets.
+
+**Automated after isolated setup:** `pnpm verify:paystack` initializes a real test checkout and waits for independent provider verification plus exactly one committed webhook event. It refuses live keys and its fixture helper refuses hosted databases. Use a local isolated Supabase stack, private test credentials and a controlled public HTTPS tunnel; never point this fixture-based command at production. A person must complete the test checkout. The command creates test data and private `.local-paystack-verification.json`; see manual-resolution.md for reconciliation/cleanup. Controlled payment/email unit tests run automatically in CI but do not prove real provider acceptance.
+
+**Manual:** send a controlled invitation and Auth confirmation, inspect actual inbox receipt, provider ID and verified delivery event; verify bounce/complaint suppression using controlled recipients. For live Paystack, complete provider activation, configure matching `sk_live_`/`pk_live_` keys, and agree a small controlled transaction and reconciliation with the operator. Record amount/currency/reference/transaction-ID matching and signed webhook uniqueness. Do not improvise a live fixture or mark a payment successful manually.
+
+**Evidence/stop condition:** sandbox proof is required before enabling contributions; live mode also needs its own recorded controlled verification. Keep contributions disabled for normal guests until both required gates pass. A present API key, checkout redirect or `sent` email status does not close these gates.
+
+### 5. Deploy a preview and configure scheduling
+
+**Manual:** connect the intended repository/project/account in Vercel, isolate preview and production environment variables, and deploy a reviewed commit. Confirm the actual remote GitHub CI run passed for that commit. Review before pushing. Configure the scheduler only on the intended production deployment after provider and recovery setup is ready.
+
+**Automated:** `.github/workflows/ci.yml` installs the frozen pnpm dependency tree, starts real isolated Supabase, generates private local credentials, checks connectivity/lint/build/types and runs unit, payment, email, database, workflow, release-tooling and desktop/mobile browser suites. `vercel.json` selects Next.js and runs the full application check as the build gate. It declares a five-minute notification cron; CI does not deploy production or call real providers.
+
+**Manual:** confirm the hosting plan permits that frequency and function duration, and that `CRON_SECRET` authenticates execution. Use one equivalent authenticated scheduler if needed. Do not attach a second scheduler without reviewing duplicate work. Atomic leases prevent concurrent claims but cannot eliminate ambiguity after a provider accepts an email and the request times out. Vercel's secret convention and operational limits are documented in [managing cron jobs](https://vercel.com/docs/cron-jobs/manage-cron-jobs).
+
+**Evidence/stop condition:** retain remote CI/deployment references, deployed commit and observed authenticated scheduled execution. Readiness checks never invoke the worker because doing so can send queued email.
+
+### 6. Run and retain automated readiness checks
+
+**Automated:** run `pnpm release:prepare --mode test` during provider staging, then `pnpm verify:release --mode live --smoke --report .local-release-final.json` with the final private environment after live configuration. A failed check exits nonzero and names the missing/invalid requirement. Fix the underlying issue and generate new evidence. Use `pnpm test:release-tooling` to validate the inspection tooling without providers or Supabase.
+
+**Manual:** compare the report revision with the deployed commit, inspect any dirty checkout status, and attach external evidence to each OPEN gate in the release record. Do not equate an exit 0 with deployment, inbox delivery, payment correctness or release approval.
+
+### 7. Finalize the domain and monitoring
+
+**Manual:** add the domain in the hosting account, apply its requested DNS records and verify certificate issuance, HTTPS and canonical redirects from aliases/HTTP. Update the Auth allowlist, provider webhook destinations and `NEXT_PUBLIC_APP_URL` consistently; redeploy for the final origin. Configure error/uptime alerts, worker failures/exhausted jobs, provider webhook failures and backup failures. Trigger controlled alert conditions and confirm receipt. Diagnostic tooling must exclude invitation bodies, raw tokens, card data and secrets.
+
+**Automated:** rerun `--smoke` against the final canonical origin. Existing local release tests check canonical/structured metadata, robots/sitemap privacy and client-secret exclusion. Use hosting/provider monitoring for ongoing alerts; no external monitoring integration is provisioned by this repository.
+
+**Evidence/stop condition:** record DNS/HTTPS/redirect observations, final deployment reference and delivered alert evidence. Stop on redirect loops, wrong canonical origin or missing alert delivery.
+
+### 8. Accept the hosted service and authorize launch
+
+**Manual with controlled records:** verify sign-in/out and cross-device confirmation; two-tenant access isolation; private drafts and explicit publication; public navigation/mobile/keyboard behavior; invitation revocation/expiry; RSVP allowances; gift concurrency/private cancellation; image upload/private/public access; guestbook moderation; unique QR check-in; seating capacity; CSV reports; and real email events. Test camera permissions/scanning on a physical HTTPS device, and measure deployed mobile network/rendering performance. Run the operator-agreed financial flow before enabling public contributions.
+
+**Automated:** the same broad workflows already run against isolated local Supabase in CI, including desktop/mobile browser viewports. Do not run fixture-based integration suites against hosted production; the deployed smoke command is the read-only production subset. Hosting-specific RLS, real devices and provider interactions still need evidence.
+
+**Evidence/stop condition:** record operator, UTC timestamps, commit/deployment, schema versions, outcomes and private evidence references. Record backup/recovery targets and the compatible rollback commit. The operator signs off only when required manual gates and automated checks pass; otherwise keep the affected capability disabled and the release blocked.
 
 ## Notification operations
 

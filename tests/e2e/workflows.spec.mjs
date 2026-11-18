@@ -31,10 +31,56 @@ test('gift reservation has a private management link and cancellation restores a
 });
 test('guestbook submission stays private until an authenticated moderator approves it',async({page})=>{
  const message='Browser wishes '+randomUUID().slice(0,8);await page.goto(`/${f.tag}-a/guestbook`);await page.getByLabel('Your name',{exact:true}).fill('Browser guestbook guest');await page.getByLabel('Your message',{exact:true}).fill(message);await page.getByRole('button',{name:'Send your wishes'}).click();await expect(page.getByRole('status').filter({hasText:'will appear after approval'})).toBeVisible();await page.reload();await expect(page.locator('blockquote')).toHaveCount(0);
- await signIn(page);await page.goto(`/admin/${f.weddingA}/operations?status=pending`);const card=page.locator('section').filter({has:page.getByText(message,{exact:true})}).last();await card.getByRole('combobox',{name:'Status',exact:true}).selectOption('approved');await card.getByRole('button',{name:'Save moderation'}).click();await page.goto(`/${f.tag}-a/guestbook`);await expect(page.getByText(message,{exact:true})).toBeVisible();
+ await signIn(page);await page.goto(`/admin/${f.weddingA}/operations?status=pending`);const card=page.locator('section').filter({has:page.getByText(message,{exact:true})}).last();await card.getByRole('combobox',{name:'Status',exact:true}).selectOption('approved');await card.getByRole('button',{name:'Save moderation'}).click();await expect(page.getByText(message,{exact:true})).toHaveCount(0);await page.goto(`/${f.tag}-a/guestbook`);await expect(page.getByText(message,{exact:true})).toBeVisible();
 });
 test('mobile navigation, gallery lightbox keyboard controls and focus recovery work',async({page},testInfo)=>{
  const path=`${f.weddingA}/${randomUUID()}.png`;const bytes=pixelPng();must(await f.accounts.ownerA.client.storage.from('wedding-media').upload(path,bytes,{contentType:'image/png'}));must(await f.accounts.ownerA.client.from('media_assets').insert({wedding_id:f.weddingA,object_path:path,mime_type:'image/png',size_bytes:bytes.length,is_published:true}));const album=must(await f.accounts.ownerA.client.from('gallery_albums').insert({wedding_id:f.weddingA,title:'Browser album',is_published:true}).select().single());must(await f.accounts.ownerA.client.from('gallery_images').insert([{wedding_id:f.weddingA,album_id:album.id,image_path:path,alt_text:'Browser photo one',is_published:true},{wedding_id:f.weddingA,album_id:album.id,image_path:path,alt_text:'Browser photo two',is_published:true}]));
  await page.goto(`/${f.tag}-a`);if(testInfo.project.name==='mobile'){await page.getByText('Menu',{exact:true}).click();await page.getByRole('navigation',{name:'Mobile wedding navigation'}).getByRole('link',{name:'Gallery',exact:true}).click();}else{await page.getByRole('navigation',{name:'Wedding navigation',exact:true}).getByRole('link',{name:'Gallery',exact:true}).click();}
- const opener=page.getByRole('button',{name:'Open photograph: Browser photo one',exact:true});await opener.click();await expect(page.getByRole('dialog')).toBeVisible();await page.keyboard.press('ArrowRight');await expect(page.getByRole('dialog').getByRole('heading',{name:'Browser photo two',exact:true})).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);await expect(opener).toBeFocused();
+ await expect(page).toHaveURL(new RegExp(`/${f.tag}-a/gallery$`));
+ const intro=await page.getByRole('heading',{name:'Moments, together',exact:true}).boundingBox();expect(intro.x).toBeGreaterThanOrEqual(24);expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)).toBe(false);
+ const opener=page.getByRole('button',{name:'Open photograph: Browser photo one',exact:true});await opener.click();await expect(page.getByRole('dialog')).toBeVisible();await expect(page.getByRole('dialog').getByRole('button',{name:'Close photograph',exact:true})).toBeFocused();await page.keyboard.press('ArrowRight');await expect(page.getByRole('dialog').getByRole('heading',{name:'Browser photo two',exact:true})).toBeVisible();await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);await expect(opener).toBeFocused();
+});
+
+test('workspace navigation identifies the current page and keeps the overview responsive', async ({ page }, testInfo) => {
+ await signIn(page);
+ await page.goto(`/admin/${f.weddingA}`);
+ await expect(page.getByRole('heading', { name: 'Wedding overview', exact: true })).toBeVisible();
+ await expect(page.getByText(/Africa\/Lagos/).first()).toBeVisible();
+ expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+ await page.screenshot({ path: testInfo.outputPath('loop-admin-overview.png'), fullPage: true, animations: 'disabled' });
+ const mobile = testInfo.project.name === 'mobile';
+ if (mobile) await page.locator('summary').filter({ hasText: 'Overview' }).click();
+ const navigation = page.getByRole('navigation', { name: mobile ? 'Mobile workspace navigation' : 'Workspace navigation', exact: true });
+ await expect(navigation.getByRole('link', { name: 'Overview', exact: true })).toHaveAttribute('aria-current', 'page');
+ await navigation.getByRole('link', { name: 'Guests & invitations', exact: true }).click();
+ await expect(page).toHaveURL(new RegExp(`/admin/${f.weddingA}/guests$`));
+ if (mobile) {
+  await expect(page.locator('summary').filter({ hasText: 'Guests & invitations' })).toBeVisible();
+  await expect(navigation).not.toBeVisible();
+ } else {
+  await expect(navigation.getByRole('link', { name: 'Guests & invitations', exact: true })).toHaveAttribute('aria-current', 'page');
+ }
+ await page.goto(`/${f.tag}-a`);
+ expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+ await page.screenshot({ path: testInfo.outputPath('loop-wedding-home.png'), fullPage: true, animations: 'disabled' });
+});
+
+test('dark mode applies to admin, draft previews and custom wedding pages', async ({ page }, testInfo) => {
+ await signIn(page);
+ await page.goto(`/admin/${f.weddingA}`);
+ await page.getByRole('button',{name:'Dark mode',exact:true}).click();
+ await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
+ await page.screenshot({path:testInfo.outputPath('loop-admin-dark.png'),fullPage:true,animations:'disabled'});
+ await page.goto(`/admin/${f.weddingA}/preview`);
+ await expect(page.getByRole('button',{name:'Dark mode',exact:true})).toHaveAttribute('aria-pressed','true');
+ const preview=await page.locator('.wedding-theme').evaluate(element=>getComputedStyle(element).backgroundColor);
+ await page.goto(`/${f.tag}-a`);
+ await expect(page.getByRole('button',{name:'Dark mode',exact:true})).toHaveAttribute('aria-pressed','true');
+ const dark=await page.locator('.wedding-theme').evaluate(element=>getComputedStyle(element).backgroundColor);
+ expect(dark).toBe(preview);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)).toBe(false);
+ await page.screenshot({path:testInfo.outputPath('loop-wedding-dark.png'),fullPage:true,animations:'disabled'});
+ await page.getByRole('button',{name:'Dark mode',exact:true}).click();
+ await expect(page.locator('html')).toHaveAttribute('data-theme','light');
+ expect(await page.locator('.wedding-theme').evaluate(element=>getComputedStyle(element).backgroundColor)).not.toBe(dark);
 });
