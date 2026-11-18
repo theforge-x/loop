@@ -55,7 +55,9 @@ Never commit `.env.local`, paste secrets into reports, or prefix private credent
 - `pnpm test:operations`: media/moderation/QR/check-in/seating and notification integration.
 - `pnpm test:release`: SEO, security headers, client-secret exclusion and atomic bulk publication.
 - `pnpm test:all`: application checks and every local acceptance suite sequentially.
-- `pnpm verify:release`: secret-safe production configuration inspection; exits nonzero on missing setup. It does not deploy, send email or charge a payment.
+- `pnpm verify:release`: secret-safe production configuration inspection; supports `--mode test|live`, optional read-only deployed `--smoke` checks and `--report NEW_PRIVATE_FILE`. Exits nonzero on incomplete setup; never deploys, sends email or charges a payment.
+- `pnpm release:prepare`: writes a private, ignored readiness report with automated results and OPEN manual gates. See the [step-by-step production runbook](docs/production-runbook.md).
+- `pnpm test:release-tooling`: isolated tests for readiness checks, safe HTTP requests and private evidence reports.
 - `pnpm test:payments`: controlled payment/signature/transport tests; does not contact Paystack.
 - `pnpm verify:paystack`: explicit sandbox-only verification against a configured real Paystack account and public webhook; see manual-resolution.md first.
 - `pnpm test:invitations`: Phase 4 CSV/RSVP/rate-limit/delivery tests against local Supabase and a production server; real sending is disabled in this test process.
@@ -105,3 +107,7 @@ Open `/sign-up`, enter an email and a password of at least 12 characters, then c
 Local Supabase has email confirmation disabled by default, so registration signs in immediately. Hosted Supabase should enable email/password signup and confirmation with a configured Auth email sender. Set Auth Site URL to NEXT_PUBLIC_APP_URL and allow `<origin>/auth/confirm` in redirect URLs. The default PKCE confirmation link must be opened in the browser that registered. For confirmation across browsers/devices, set the Confirm signup template link to `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email`. The callback accepts both methods, establishes the session and redirects only to wedding setup. Invalid/expired/replayed links show recovery instructions. Auth emails use Supabase Auth mail settings, independently of the app's Resend notification transport. See [Supabase's Next.js Auth tutorial](https://supabase.com/docs/guides/getting-started/tutorials/with-nextjs). Restart local Supabase after changing its redirect configuration.
 
 Run `pnpm exec playwright test tests/e2e/onboarding.spec.mjs` after building. For the onboarding suite, set `PLAYWRIGHT_PORT=3106` to use an isolated production server when port 3000 is occupied. If you intentionally want to test the development server already running on port 3000, use `PLAYWRIGHT_REUSE_SERVER=true pnpm exec playwright test tests/e2e/onboarding.spec.mjs`. The tests require local Auth confirmation disabled for immediate signup and separately verify real token-hash confirmation/replay rejection.
+
+## Hostinger Business alternative
+
+Deploy the full Next.js app using Hostinger Business managed Node.js hosting, with Supabase retained for database/Auth/Storage. See the [Hostinger deployment guide](docs/hostinger-deployment.md) for hPanel settings, environment configuration, Git or private source-archive upload, optional notification scheduling, verification and rollback. Run `pnpm build:hostinger` in the configured hosting environment, `pnpm package:hostinger` for an upload archive, and `pnpm test:hostinger` for isolated deployment-tooling tests. The existing Vercel configuration remains available.

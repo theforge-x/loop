@@ -27,6 +27,8 @@ jobs:
       - run: pnpm db:lint
       - run: pnpm check
       - run: pnpm test:unit
+      - run: pnpm test:release-tooling
+      - run: pnpm test:hostinger
       - run: pnpm test:payments
       - run: pnpm test:email
       - run: pnpm test:database
