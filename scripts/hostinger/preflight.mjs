@@ -13,9 +13,10 @@ export function preflight(env = process.env, version = process.versions.node) {
           ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) throw new Error();
     } catch { problems.push(`${key} must be a hosted HTTPS origin without credentials, path, query or fragment.`); }
   }
-  for (const key of ['NEXT_PUBLIC_SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY']) {
-    if (!env[key]?.trim()) problems.push(`${key} is required.`);
+  if (!env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim() && !env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()) {
+    problems.push('Set NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY.');
   }
+  if (!env.SUPABASE_SERVICE_ROLE_KEY?.trim()) problems.push('SUPABASE_SERVICE_ROLE_KEY is required.');
   if (!env.CRON_SECRET || env.CRON_SECRET.length < 32) problems.push('CRON_SECRET must have at least 32 characters.');
   return problems;
 }

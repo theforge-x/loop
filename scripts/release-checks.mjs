@@ -27,7 +27,8 @@ export function configurationChecks(env, mode = 'live') {
   const check = (name, passes) => checks.push({ name, passes: Boolean(passes) });
   check('Production HTTPS application origin', hostedOrigin(env.NEXT_PUBLIC_APP_URL));
   check('Hosted HTTPS Supabase origin', hostedOrigin(env.NEXT_PUBLIC_SUPABASE_URL));
-  for (const key of ['NEXT_PUBLIC_SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'RESEND_API_KEY', 'RESEND_FROM_EMAIL', 'RESEND_WEBHOOK_SECRET', 'PAYSTACK_SECRET_KEY', 'NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY']) check(key, env[key]?.trim());
+  check('Supabase publishable or legacy anon key', env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim() || env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim());
+  for (const key of ['SUPABASE_SERVICE_ROLE_KEY', 'RESEND_API_KEY', 'RESEND_FROM_EMAIL', 'RESEND_WEBHOOK_SECRET', 'PAYSTACK_SECRET_KEY', 'NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY']) check(key, env[key]?.trim());
   check('Private request-limit secret (32+ characters)', env.RATE_LIMIT_SECRET?.trim().length >= 32);
   check('Authenticated worker secret (32+ characters)', env.CRON_SECRET?.trim().length >= 32);
   check(`Paystack public/private key modes match (${mode})`,

@@ -87,7 +87,7 @@ The link persists locally; confirm the project before every hosted command. Supa
 
 ### 3. Set environment variables and proxy policy
 
-**Manual:** enter values in the correct Vercel environment scopes: canonical `NEXT_PUBLIC_APP_URL`, matching hosted Supabase URL/anon key, server-only service-role key, `NEXT_PUBLIC_DEFAULT_TIMEZONE`, random independent `RATE_LIMIT_SECRET` and `CRON_SECRET` of at least 32 characters. Keep private keys free of a public prefix. Configure provider values in step 4. Leave `TRUST_PROXY_HEADERS=false` until the actual proxy is verified to overwrite client forwarding headers; then explicitly select `true` if appropriate. Redeploy after changes to build-time public variables.
+**Manual:** enter values in the correct Vercel environment scopes: canonical `NEXT_PUBLIC_APP_URL`, matching hosted Supabase URL and publishable key (or legacy anon key), server-only service-role key, `NEXT_PUBLIC_DEFAULT_TIMEZONE`, random independent `RATE_LIMIT_SECRET` and `CRON_SECRET` of at least 32 characters. Keep private keys free of a public prefix. Configure provider values in step 4. Leave `TRUST_PROXY_HEADERS=false` until the actual proxy is verified to overwrite client forwarding headers; then explicitly select `true` if appropriate. Redeploy after changes to build-time public variables.
 
 **Automated:** `pnpm verify:release` validates HTTPS origins without paths/credentials, required settings, secret lengths, timezone, explicit proxy boolean, sender format, matching payment modes and suspicious public variable names. It reports check names without values. These are syntax/presence checks, not credential authentication or entropy verification.
 

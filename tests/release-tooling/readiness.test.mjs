@@ -9,6 +9,8 @@ import { configurationChecks, deployedChecks, hostedOrigin } from '../../scripts
 const env = { NEXT_PUBLIC_APP_URL: 'https://loop.example.com', NEXT_PUBLIC_SUPABASE_URL: 'https://project.supabase.co', NEXT_PUBLIC_SUPABASE_ANON_KEY: 'public', SUPABASE_SERVICE_ROLE_KEY: 'private-marker-never-log', RESEND_API_KEY: 'private-resend-marker', RESEND_FROM_EMAIL: 'invites@example.com', RESEND_WEBHOOK_SECRET: 'private-webhook-marker', RATE_LIMIT_SECRET: 'a'.repeat(32), CRON_SECRET: 'b'.repeat(32), PAYSTACK_SECRET_KEY: 'sk_live_private-marker', NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY: 'pk_live_public', TRUST_PROXY_HEADERS: 'false', NEXT_PUBLIC_DEFAULT_TIMEZONE: 'Africa/Lagos' };
 test('configuration rejects incomplete settings, mixed modes, invalid origins and public secrets', () => {
   assert.ok(configurationChecks(env).every(c => c.passes));
+  assert.ok(configurationChecks({ ...env, NEXT_PUBLIC_SUPABASE_ANON_KEY: '', NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'public' }).every(c => c.passes));
+  assert.ok(configurationChecks({ ...env, NEXT_PUBLIC_SUPABASE_ANON_KEY: ' ' }).some(c => !c.passes));
   for (const value of ['http://localhost', 'https://localhost', 'https://[::1]', 'https://host/path', 'https://user:password@host', 'https://host?secret=value']) assert.equal(hostedOrigin(value), false);
   for (const patch of [{ NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY: 'pk_test_public' }, { NEXT_PUBLIC_CRON_SECRET: 'secret' }, { NEXT_PUBLIC_DEFAULT_TIMEZONE: 'invalid' }, { TRUST_PROXY_HEADERS: '' }, { RATE_LIMIT_SECRET: ' '.repeat(32) }]) assert.ok(configurationChecks({ ...env, ...patch }).some(c => !c.passes));
   assert.ok(configurationChecks({ ...env, PAYSTACK_SECRET_KEY: 'sk_test_private', NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY: 'pk_test_public' }, 'test').every(c => c.passes));

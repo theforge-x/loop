@@ -12,6 +12,7 @@ const valid = { NEXT_PUBLIC_APP_URL: 'https://loop.example.com', NEXT_PUBLIC_SUP
   NEXT_PUBLIC_SUPABASE_ANON_KEY: 'public-test-key', SUPABASE_SERVICE_ROLE_KEY: 'private-test-key', CRON_SECRET: 'x'.repeat(32) };
 test('Hostinger build rejects unsupported runtime and local or malformed production configuration', () => {
   assert.deepEqual(preflight(valid, '24.15.0'), []);
+  assert.deepEqual(preflight({ ...valid, NEXT_PUBLIC_SUPABASE_ANON_KEY: '', NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'public-test-key' }, '24.15.0'), []);
   assert.deepEqual(preflight(valid, '22.22.2'), []);
   for (const version of ['20.19.0', '22.22.1', '24.14.0', '26.0.0']) assert.ok(preflight(valid, version).length);
   for (const url of ['http://localhost:3000', 'https://user:pass@example.com', 'https://example.com/path', 'https://example.com?secret=x']) {

@@ -27,7 +27,7 @@ Apply the database using `pnpm exec supabase migration up --local`, then run `pn
 | --- | --- |
 | `NEXT_PUBLIC_APP_URL` | Application origin; localhost during development |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase API URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public project anon key; access is constrained by RLS |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Public project key with access constrained by RLS. The legacy `NEXT_PUBLIC_SUPABASE_ANON_KEY` also works. |
 | `NEXT_PUBLIC_DEFAULT_TIMEZONE` | Default timezone, Africa/Lagos |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only privileged key; later trusted workflows |
 | `RESEND_API_KEY` | Server-only Resend sending key |
