@@ -96,7 +96,7 @@ See [architecture decisions](docs/architecture.md). See [manual-resolution notes
 
 Website identity/content/theme edits are saved as drafts. Use the private preview before publishing. Content records have independent draft and publication actions, including atomic bulk publication; public rendering never inherits member permissions. Media bytes remain private until explicitly published, and albums/photographs have separate visibility controls.
 
-The worker endpoint is `/api/cron/notifications`; it requires `Authorization: Bearer <CRON_SECRET>`. `vercel.json` proposes a five-minute schedule; activate it only after the intended production environment and provider setup are verified. The communication dashboard shows queue status separately from verified delivery status. See the production runbook for leases, retries, exhausted jobs, suppression and recovery.
+The worker endpoint is `/api/cron/notifications`. It requires `Authorization: Bearer <CRON_SECRET>`. After verifying the production environment and email provider, use one external scheduler to call it every five minutes. The [hPanel cron instructions](docs/hostinger-deployment.md#4-schedule-notification-processing) also work when the app is hosted on Vercel. See the [production runbook](docs/production-runbook.md) for leases, retries, exhausted jobs, suppression and recovery.
 
 The production dependency audit is clean. A targeted minimatch override for the TypeScript ESLint parser avoids a development-only denial-of-service advisory without downgrading the Next.js lint configuration. Lint/typecheck and the complete audit validate the override.
 

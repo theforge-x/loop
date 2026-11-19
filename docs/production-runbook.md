@@ -1,6 +1,6 @@
 # Deployment and recovery runbook
 
-For the alternative Hostinger Business deployment, follow the [Hostinger deployment guide](hostinger-deployment.md) alongside these shared release and recovery gates. It provides the hosting settings and scheduler that replace the Vercel-specific steps below.
+For a Hostinger Business deployment, follow the [Hostinger deployment guide](hostinger-deployment.md) alongside these release and recovery gates. The guide also covers using hPanel to schedule the worker for a Vercel deployment.
 
 ## Release evidence and pending gates
 
@@ -107,9 +107,9 @@ The link persists locally; confirm the project before every hosted command. Supa
 
 **Manual:** connect the intended repository/project/account in Vercel, isolate preview and production environment variables, and deploy a reviewed commit. Confirm the actual remote GitHub CI run passed for that commit. Review before pushing. Configure the scheduler only on the intended production deployment after provider and recovery setup is ready.
 
-**Automated:** `.github/workflows/ci.yml` installs the frozen pnpm dependency tree, starts real isolated Supabase, generates private local credentials, checks connectivity/lint/build/types and runs unit, payment, email, database, workflow, release-tooling and desktop/mobile browser suites. `vercel.json` selects Next.js and runs the full application check as the build gate. It declares a five-minute notification cron; CI does not deploy production or call real providers.
+**Automated:** `.github/workflows/ci.yml` installs the frozen pnpm dependency tree, starts real isolated Supabase, generates private local credentials, checks connectivity/lint/build/types and runs unit, payment, email, database, workflow, release-tooling and desktop/mobile browser suites. `vercel.json` selects Next.js and runs the full application check as the build gate. The notification schedule is configured separately in the scheduler account.
 
-**Manual:** confirm the hosting plan permits that frequency and function duration, and that `CRON_SECRET` authenticates execution. Use one equivalent authenticated scheduler if needed. Do not attach a second scheduler without reviewing duplicate work. Atomic leases prevent concurrent claims but cannot eliminate ambiguity after a provider accepts an email and the request times out. Vercel's secret convention and operational limits are documented in [managing cron jobs](https://vercel.com/docs/cron-jobs/manage-cron-jobs).
+**Manual:** use one external scheduler to send an authenticated `GET /api/cron/notifications` every five minutes. Follow the [hPanel cron setup and verification](hostinger-deployment.md#4-schedule-notification-processing) if using Hostinger. Confirm the target host's function duration and the scheduler's request timeout. During a cutover, disable the previous scheduler before enabling its replacement. Atomic leases prevent concurrent claims, and a timeout can still occur after a provider accepts an email.
 
 **Evidence/stop condition:** retain remote CI/deployment references, deployed commit and observed authenticated scheduled execution. Readiness checks never invoke the worker because doing so can send queued email.
 
