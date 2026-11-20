@@ -1,2 +1,6 @@
-overrides:
-  "@typescript-eslint/typescript-estree>minimatch": "^11.0.1"
+allowBuilds:
+  '@prisma/client': false
+  '@prisma/engines': true
+  esbuild: true
+  prisma: false
+  sharp: false
