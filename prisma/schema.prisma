@@ -1,0 +1,175 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Attendance {
+  ACCEPTED
+  PARTIAL
+  DECLINED
+}
+
+enum GiftStatus {
+  AVAILABLE
+  RESERVED
+  RECEIVED
+}
+
+enum ReservationStatus {
+  RESERVED
+  CONFIRMED
+  CANCELLED
+  RECEIVED
+}
+
+model Admin {
+  id           String @id @default(cuid())
+  email        String @unique @db.VarChar(254)
+  passwordHash String
+  active       Boolean @default(true)
+  sessions     AdminSession[]
+
+  @@map("admins")
+}
+
+model AdminSession {
+  id        String @id @db.Char(64)
+  adminId   String
+  expiresAt DateTime
+  admin     Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("admin_sessions")
+}
+
+model WeddingSettings {
+  id          Int @id
+  draft       Json
+  published   Json
+  updatedAt   DateTime @updatedAt
+  publishedAt DateTime @default(now())
+
+  @@map("wedding_settings")
+}
+
+model Invitation {
+  id        String @id @default(cuid())
+  label     String @db.VarChar(120)
+  codeHash  String @unique @db.Char(64)
+  guestLimit Int
+  deadline  DateTime?
+  disabled  Boolean @default(false)
+  createdAt DateTime @default(now())
+  guests    Guest[]
+  rsvp      Rsvp?
+
+  @@index([label])
+  @@map("invitations")
+}
+
+model Guest {
+  id           String @id @default(cuid())
+  invitationId String
+  name         String @db.VarChar(120)
+  position     Int
+  invitation   Invitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  attendances  RsvpAttendee[]
+
+  @@index([invitationId, position])
+  @@map("guests")
+}
+
+model Rsvp {
+  id           String @id @default(cuid())
+  invitationId String @unique
+  reference    String @unique @db.VarChar(32)
+  status       Attendance
+  phone        String @db.VarChar(40)
+  message      String @db.Text
+  updatedAt    DateTime @updatedAt
+  invitation   Invitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  attendees    RsvpAttendee[]
+  history      RsvpHistory[]
+
+  @@index([status])
+  @@map("rsvps")
+}
+
+model RsvpAttendee {
+  rsvpId    String
+  guestId   String
+  attending Boolean
+  rsvp      Rsvp @relation(fields: [rsvpId], references: [id], onDelete: Cascade)
+  guest     Guest @relation(fields: [guestId], references: [id], onDelete: Restrict)
+
+  @@id([rsvpId, guestId])
+  @@map("rsvp_attendees")
+}
+
+model RsvpHistory {
+  id        String @id @default(cuid())
+  rsvpId    String
+  actor     String
+  snapshot  Json
+  createdAt DateTime @default(now())
+  rsvp      Rsvp @relation(fields: [rsvpId], references: [id], onDelete: Cascade)
+
+  @@index([rsvpId, createdAt])
+  @@map("rsvp_history")
+}
+
+model WishlistItem {
+  id           String @id @default(cuid())
+  name         String @db.VarChar(120)
+  description  String @db.Text
+  image        String
+  price        String @db.VarChar(60)
+  status       GiftStatus @default(AVAILABLE)
+  hidden       Boolean @default(false)
+  archived     Boolean @default(false)
+  createdAt    DateTime @default(now())
+  reservations GiftReservation[]
+
+  @@index([archived, hidden, createdAt])
+  @@map("wishlist_items")
+}
+
+model GiftReservation {
+  id           String @id @default(cuid())
+  reference    String @unique @db.VarChar(32)
+  itemId       String
+  activeItemId String? @unique
+  guestName    String @db.VarChar(120)
+  contact      String @db.VarChar(120)
+  message      String @db.Text
+  status       ReservationStatus @default(RESERVED)
+  createdAt    DateTime @default(now())
+  item         WishlistItem @relation(fields: [itemId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([itemId, createdAt])
+  @@map("gift_reservations")
+}
+
+model RateLimit {
+  key       String @id @db.Char(64)
+  hits      Int
+  expiresAt DateTime
+
+  @@index([expiresAt])
+  @@map("rate_limits")
+}
+
+model Audit {
+  id        String @id @default(cuid())
+  adminId   String
+  action    String
+  subject   String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("audit_log")
+}
